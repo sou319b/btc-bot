@@ -38,3 +38,21 @@ p4.pyに、ビットコインの取引をシミュレーションするbotを作
 pythonを実行するときは、venvの仮想環境を作ってるので、それを使ってください。
 .\venv\Scripts\activate
 windows環境,PowerShellです
+
+
+
+-----------
+p4.pyに、ビットコインの取引をシミュレーションするbotを作りました。
+しかし、エラーがでます。これを直してください
+
+Traceback (most recent call last):
+  File "C:\StableDiffusion\ccxt\p4.py", line 268, in <module>
+    simulate_trading()
+    ^^^^^^^^^^^^^^^^
+NameError: name 'simulate_trading' is not defined
+
+日本語で会話してください。
+pythonを実行するときは、venvの仮想環境を作ってるので、それを使ってください。
+.\venv\Scripts\activate
+windows環境,PowerShellです
+
