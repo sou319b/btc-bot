@@ -1,11 +1,12 @@
 pythonを使って、ビットコインの取引をシミュレーションするbotを作ってください
 
 ccxtのapiを使いリアルタイムでBTC価格を取得。
-軍資金として最初に価格を設定する。
+初期資金を10000、や100000のように入力できるようにしてください
 高頻度bot
 最大の利益をだすようにする。
 シミュレーションなので、取引所は使わない。
 擬似的に日本円でビットコインを買って、BTC価格から計算して、いくら利益がでるかシュミレーションするのが目的。
+取引が発生しないときは、「価格変動: 何%」のように表示。
 
 取引するとき下記の内容を表示するようにしてください
 現在のBTC価格：[]
@@ -19,37 +20,76 @@ BTC保有量：[]
 最大発注数量：20
 
 
-p3.pyファイルに書いてください
+p5.pyファイルに書いてください
 
 日本語で会話してください。
 pythonを実行するときは、venvの仮想環境を作ってるので、それを使ってください。
 .\venv\Scripts\activate
 windows環境,PowerShell
 
-「ｐ３」
-こんどは実際に取引所でやるようにシミュレーションを実際の想定に近づけてください
 
-ｐ４
-p4.pyを見てください
-pythonを使って、ビットコインの取引をシミュレーションするbotを作りました。
-
-取引所にビットフライヤーを使うことを想定にして、書き換えてください
 
 ＝＝＝＝＝＝＝＝＝
-p4.pyに、ビットコインの取引をシミュレーションするbotを作りました。
-しかし、エラーがでます。これを直してください
-
-日本語で会話してください。
-pythonを実行するときは、venvの仮想環境を作ってるので、それを使ってください。
-.\venv\Scripts\activate
-windows環境,PowerShellです
 
 
+python p5.py 100万円
 
------------
+============
+pythonを使って、ビットコインの取引をシミュレーションするbotを作りました。
+このbotはどういうときに取引をするのか？等の利益を出すためのアルゴリズムを教えて下さい。
 
-日本語で会話してください。
-pythonを実行するときは、venvの仮想環境を作ってるので、それを使ってください。
-.\venv\Scripts\activate
-windows環境,PowerShellです
+しかし、利益が出ません。なぜですか？
+原因を考えて、利益が出るように改良してください
+
+
+
+仮想通貨取引手数料(0.1%)と約定数量 × 0.01 ～ 0.15%（単位: BTC）を比較してください
+
+＝＝＝＝＝＝＝＝
+DeepSeek Bot | Steps: [1/5]
+
+To create this Bot, we'll use the https://chat.deepseek.com
+It's free.
+
+The code is also available here ➾ http://t.me/WimarX
+
+💠Go to https://chat.deepseek.com
+
+💠Use this prompt:
+"Hello. Please pretend you are a professional programmer with a Harvard degree and 10 years of experience. Create a bot to interact with the Dexscreener. We need to parse, save, and analyze each coin that rugged/pumped/become tier-1, listed on CEX, etc to find the patterns"
+
+
+DeepSeek Bot | Steps: [2/5]
+
+Your bot has limited functionality and isn't set up for app interaction.
+
+We'll add the Filters, Blacklist, DevBlacklist, and config file
+
+💠Prompt:
+
+"Modify the code to use Filters, Blacklist of Coins, and Dev Blacklist to blacklist rug Devs. And all of these settings into the config file. "
+
+DeepSeek Bot | Steps: [3/5]
+To avoid rug pulls, it's important to check coins on fake volume.
+
+💠Prompt:
+
+"Avoid coins with fake volume, check if it's fake via your algorithm or use Pocket Universe API that works with Dexscreener too"
+
+DeepSeek Bot | Steps: [4/5]
+To make it even safer, add support of http://rugcheck.xyz and checker on Bundle purchases.
+
+💠Prompt:
+
+"Check each token on http://rugcheck.xyz and interact only with contracts that marked as "Good. Also, check if the supply of the coin wasn't bundled. If Bundled - Blacklist+dev blacklist"
+
+DeepSeek Bot | Steps: [5/5]
+To trade tokens, u need a trading bot. Using an existing one - Bonkbot, Trojan, or any other is easier.
+
+Also, we need to merge our code and make a guide to launch it.
+💠Prompt:
+
+"To trade selected tokens use BonkBot via Telegram, also add TG support to get notifications of buy/sell, and merge all code in one.
+
+Also, write how to launch this code. "
 
