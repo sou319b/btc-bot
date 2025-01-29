@@ -1,3 +1,7 @@
+#利益がでるbot
+#成功例
+#手数料なし
+
 import ccxt
 import time
 import random
