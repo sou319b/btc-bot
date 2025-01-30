@@ -1,0 +1,10 @@
+{
+    "coin_blacklist": [],
+    "dev_blacklist": [],
+    "filters": {
+      "min_liquidity": 10000,
+      "max_price_change": 1000,
+      "min_creation_time_hours": 1,
+      "fake_volume_ratio_threshold": 0.5
+    }
+  }
