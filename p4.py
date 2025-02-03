@@ -11,13 +11,19 @@ class MockAPI:
         return {'last': 5000000}  # Mock price for BTC/JPY
 
     def create_order(self, symbol, type, side, amount, price):
+        # 手数料率を0.01%～0.15%の範囲でランダムに設定
+        fee_rate = random.uniform(0.0001, 0.0015)
+        fee = amount * fee_rate  # 手数料（BTC単位）
+        
         return {
             'id': 'mock_order_id',
             'filled': amount,
             'cost': amount * price,
             'status': 'closed',
             'price': price,
-            'timestamp': time.time()
+            'timestamp': time.time(),
+            'fee': fee,
+            'fee_rate': fee_rate
         }
 
     def fetch_order(self, order_id):
@@ -78,7 +84,7 @@ def save_trade_history(trade_details):
 [取引タイプ] {trade_details['type']}
 数量: {trade_details['amount']} BTC
 価格: {trade_details['price']} JPY
-手数料: {trade_details['fee']} JPY
+手数料: {trade_details['fee']:.8f} BTC (手数料率: {trade_details['fee_rate']*100:.4f}%)
 タイムスタンプ: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(trade_details['timestamp']))}
 -------------------------
 """

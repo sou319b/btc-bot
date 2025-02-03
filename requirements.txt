@@ -1,0 +1,7 @@
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.0
+python-bitget==1.0.1
+tensorflow==2.13.0
+python-dotenv==1.0.0
+ta==0.10.2 
