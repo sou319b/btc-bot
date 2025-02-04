@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-from bitget import Bitget
+from bitget.v1.mix import MixClient
 from dotenv import load_dotenv
 import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler
@@ -18,7 +18,7 @@ api_passphrase = os.getenv('BITGET_PASSPHRASE')
 class AITradingBot:
     def __init__(self):
         # Bitgetクライアントの設定
-        self.client = Bitget(
+        self.client = MixClient(
             api_key=api_key,
             api_secret=api_secret,
             passphrase=api_passphrase,
