@@ -16,10 +16,66 @@ BTC保有量：[]
 総資産額：[]
 買/売：[]
 
-p11.pyファイルに書いてください
 手数料は考えないくていいです。
 （Ctrl+C）で安全に終了できるようにする
 
+下記に戦略を記載しているので、そと通りに取引をするように作成してください
+
+【高頻度取引ボット戦略「マイクロトレンド3秒スキャルピング」】
+
+■基本コンセプト
+3秒間隔でマイクロトレンドを捕捉し、0.5-1%の利益確定を積み重ねる超短期スキャルピング戦略
+
+■主要指標
+1. オーダーブック深層分析
+   - 買い板/売り板の厚み比率（1.5:1以上でシグナル）
+   - 約定速度指数（3秒間の約定回数で流動性測定）
+   - 隠れ指値検知アルゴリズム（大型注文の影を追跡）
+
+2. 3秒足価格行動
+   - マイクロピンバー（0.3%以上のヒゲ形成）
+   - 出来高急増検知（前3秒比300%以上）
+   - 価格慣性指数（3秒間の加速度計算）
+
+3. 流動性マップ
+   - 動的サポート/レジスタンス（0.5%間隔で更新）
+   - 流動性狩り検知アルゴリズム（ストップ狩りパターン認識）
+
+■取引ロジック
+買いシグナル条件：
+1. オーダーブック買い圧力指数 > 1.3
+2. 3秒足が動的サポートを2回テスト済み
+3. 隠れ指値が現在価格の0.2%下に検出
+4. 流動性狩りパターンが検出されない
+
+売りシグナル条件：
+1. 売り板厚み比率が1.7:1を超過
+2. 価格慣性指数が-0.15以下
+3. 3秒足がマイクロピンバー形成
+4. 約定速度が前周期比150%増加
+
+■リスク管理
+- 動的損切り（ボラティリティ調整型：ATR(3秒)の3倍）
+- 利益確定：0.8%固定（ボラティリティ>2%時は1.2%）
+- 最大連敗回数3回で24時間停止
+- 資金使用率：1トレード当たり最大2%
+
+■最適化パラメータ
+- 流動性閾値：BTCの1分間平均取引量に比例
+- タイミング調整：取引所APIのレイテンシを0.3秒単位で補正
+- スリッページ制御：約定確率90%以上を保証する価格帯計算
+
+■特殊機能
+- 取引所接続品質モニタリング（遅延3秒以上で自動停止）
+- ブラックスワン検知システム（10秒間3%以上の変動で戦略凍結）
+- 自己修復アルゴリズム（連続3回の不成立注文でパラメータ自動調整）
+
+
+
+
+
+
+===============================================================
 取引所の売買手数料：約定数量 × 0.01 ～ 0.15%（単位: BTC）で計算してください
 最小発注数量：0.00000001BTC
 最大発注数量：20
@@ -61,50 +117,9 @@ p9.pyに書いてください
 
 
 ＝＝＝＝＝＝＝＝
-DeepSeek Bot | Steps: [1/5]
+仮想通貨取引botで使用する戦略を考えてほしいです
 
-To create this Bot, we'll use the https://chat.deepseek.com
-It's free.
+3秒に一回取引をする高頻度botです
+ビットコインを取引します。
 
-The code is also available here ➾ http://t.me/WimarX
-
-💠Go to https://chat.deepseek.com
-
-💠Use this prompt:
-"Hello. Please pretend you are a professional programmer with a Harvard degree and 10 years of experience. Create a bot to interact with the Dexscreener. We need to parse, save, and analyze each coin that rugged/pumped/become tier-1, listed on CEX, etc to find the patterns"
-
-
-DeepSeek Bot | Steps: [2/5]
-
-Your bot has limited functionality and isn't set up for app interaction.
-
-We'll add the Filters, Blacklist, DevBlacklist, and config file
-
-💠Prompt:
-
-"Modify the code to use Filters, Blacklist of Coins, and Dev Blacklist to blacklist rug Devs. And all of these settings into the config file. "
-
-DeepSeek Bot | Steps: [3/5]
-To avoid rug pulls, it's important to check coins on fake volume.
-
-💠Prompt:
-
-"Avoid coins with fake volume, check if it's fake via your algorithm or use Pocket Universe API that works with Dexscreener too"
-
-DeepSeek Bot | Steps: [4/5]
-To make it even safer, add support of http://rugcheck.xyz and checker on Bundle purchases.
-
-💠Prompt:
-
-"Check each token on http://rugcheck.xyz and interact only with contracts that marked as "Good. Also, check if the supply of the coin wasn't bundled. If Bundled - Blacklist+dev blacklist"
-
-DeepSeek Bot | Steps: [5/5]
-To trade tokens, u need a trading bot. Using an existing one - Bonkbot, Trojan, or any other is easier.
-
-Also, we need to merge our code and make a guide to launch it.
-💠Prompt:
-
-"To trade selected tokens use BonkBot via Telegram, also add TG support to get notifications of buy/sell, and merge all code in one.
-
-Also, write how to launch this code. "
-
+戦略を詳細に考えてほしいです
