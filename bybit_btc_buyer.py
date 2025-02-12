@@ -1,3 +1,7 @@
+#Bybitで取引するためのプログラム
+#テストネットを使用して、BTCの購入、売却、ポジション確認を行う
+
+
 import os
 import time
 from pybit.unified_trading import HTTP
