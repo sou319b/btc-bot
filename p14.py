@@ -19,72 +19,67 @@ session = HTTP(
 def get_btc_price():
     """BTCの現在価格を取得する関数"""
     try:
-        now = int(time.time())
-        # 直近の完了した1分足の開始時刻を取得
-        candle_end = (now // 60) * 60  
-        end_time = candle_end * 1000
-        start_time = (candle_end - 60) * 1000
-
-        kline = session.get_mark_price_kline(
-            category="linear",
-            symbol="BTCUSDT",
-            interval=1,
-            start=start_time,
-            end=end_time,
-            limit=1
+        ticker = session.get_tickers(
+            category="spot",
+            symbol="BTCUSDT"
         )
-
-        if kline['result']['list']:
-            # kline のフォーマット: [timestamp, open, high, low, close]
-            return float(kline['result']['list'][0][4])
-        else:
-            print("klineデータが空です")
-            return None
+        return float(ticker['result']['list'][0]['lastPrice'])
     except Exception as e:
         print(f"価格取得中にエラーが発生: {e}")
         return None
 
 
-def print_trade_info(action, current_time, current_price, usdt_balance, btc_holding):
+def print_trade_info(action, current_time, current_price, usdt_balance, btc_holding, initial_total=None):
     total_assets = usdt_balance + btc_holding * current_price
-    print("----------------")
-    print(f"現在の時刻：{current_time}")
-    print(f"現在のBTC価格：{current_price:.2f}")
-    print(f"USDT残高: {usdt_balance:.2f}")
-    print(f"BTC保有量：{btc_holding:.6f}")
-    print(f"総資産額：{total_assets:.2f}")
-    print(f"買/売：{action}")
-    print("----------------\n")
+    
+    print("\n━━━━━━━━━━ 取引情報 ━━━━━━━━━━")
+    print(f"📅 時刻　　　：{current_time}")
+    print(f"💰 BTC価格　：{current_price:,.2f} USDT")
+    print(f"💵 USDT残高 ：{usdt_balance:,.2f} USDT")
+    print(f"₿ BTC保有量：{btc_holding:.6f} BTC")
+    print(f"📊 総資産額 ：{total_assets:,.2f} USDT")
+    
+    if initial_total is not None:
+        profit = total_assets - initial_total
+        profit_percentage = (profit / initial_total) * 100
+        if profit >= 0:
+            print(f"💹 現在の利益：+{profit:,.2f} USDT (+{profit_percentage:.2f}%)")
+        else:
+            print(f"📉 現在の損失：{profit:,.2f} USDT ({profit_percentage:.2f}%)")
+    
+    if action != "情報":
+        print(f"📈 取引種別 ：{action}")
+    print("━━━━━━━━━━━━━━━━━━━━━━━")
 
 
 def get_wallet_info():
     """USDT残高とBTC保有量を取得する関数"""
     try:
-        wallet_info = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
-        result = wallet_info.get('result', {})
+        wallet = session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
         usdt_balance = 0.0
-        if 'list' in result:
-            for asset in result['list']:
-                if asset.get('coin') == 'USDT':
-                    usdt_balance = float(asset.get('available_balance', 0))
-                    break
-        else:
-            usdt_balance = float(result.get('USDT', {}).get('available_balance', 0))
+        if 'result' in wallet and 'list' in wallet['result']:
+            for account in wallet['result']['list']:
+                if 'coin' in account:
+                    for coin_info in account['coin']:
+                        if coin_info['coin'] == 'USDT':
+                            usdt_balance = float(coin_info['walletBalance'])
+                            break
     except Exception as e:
-        print(f"ウォレット情報取得エラー: {e}")
+        print(f"USDT残高取得エラー: {e}")
         usdt_balance = 0.0
 
     try:
-        pos_info = session.get_positions(category="linear", symbol="BTCUSDT")
+        wallet = session.get_wallet_balance(accountType="UNIFIED", coin="BTC")
         btc_holding = 0.0
-        result = pos_info.get('result', {})
-        if 'list' in result:
-            for pos in result['list']:
-                btc_holding += abs(float(pos.get('size', 0)))
-        else:
-            btc_holding = 0.0
+        if 'result' in wallet and 'list' in wallet['result']:
+            for account in wallet['result']['list']:
+                if 'coin' in account:
+                    for coin_info in account['coin']:
+                        if coin_info['coin'] == 'BTC':
+                            btc_holding = float(coin_info['walletBalance'])
+                            break
     except Exception as e:
-        print(f"ポジション情報取得エラー: {e}")
+        print(f"BTC残高取得エラー: {e}")
         btc_holding = 0.0
 
     return usdt_balance, btc_holding
@@ -97,7 +92,15 @@ def main():
         initial_price = get_btc_price()
         if initial_price is None:
             time.sleep(1)
-    print(f"初期BTC価格: {initial_price:.2f}\n")
+    
+    # 初期資産を計算
+    initial_usdt, initial_btc = get_wallet_info()
+    initial_total = initial_usdt + initial_btc * initial_price
+    
+    print(f"\n━━━━━━━━━━ 初期状態 ━━━━━━━━━━")
+    print(f"💫 初期BTC価格：{initial_price:,.2f} USDT")
+    print(f"💰 初期総資産　：{initial_total:,.2f} USDT")
+    print("━━━━━━━━━━━━━━━━━━━━━━━\n")
 
     best_price = initial_price
 
@@ -109,19 +112,23 @@ def main():
                 time.sleep(1)
                 continue
 
-            # 実際の市場価格を使用
             current_price = base_price
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             price_diff = ((current_price - best_price) / best_price) * 100
-            print("----------------")
-            print(f"現在の時刻：{current_time}")
-            print(f"現在のBTC価格：{current_price:.2f}")
-            print(f"基準価格からの変動: {price_diff:+.2f}%")
-            print("----------------")
+            
+            # 価格変動情報の表示
+            print("\n━━━━━━━━━━ 価格情報 ━━━━━━━━━━")
+            print(f"📅 時刻　　　：{current_time}")
+            print(f"💰 現在価格　：{current_price:,.2f} USDT")
+            if price_diff > 0:
+                print(f"📈 価格変動　：+{price_diff:.2f}%")
+            else:
+                print(f"📉 価格変動　：{price_diff:.2f}%")
+            print("━━━━━━━━━━━━━━━━━━━━━━━")
 
             # 常にUSDT残高、BTC保有量、総資産額を表示
             usdt_balance, btc_holding = get_wallet_info()
-            print_trade_info("情報", current_time, current_price, usdt_balance, btc_holding)
+            print_trade_info("情報", current_time, current_price, usdt_balance, btc_holding, initial_total)
 
             # 買い条件：現在価格が基準価格の0.1%下落した場合
             if current_price < best_price * 0.999:

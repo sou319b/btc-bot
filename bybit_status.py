@@ -1,7 +1,8 @@
 """
 Bybitのapiを使い残高、BTC価格を表示する
 正しく動作する
-   
+スポット取引の価格を取得するために、get_tickers()メソッドの引数にcategory="spot"を追加
+
 """
 
 import os
