@@ -10,7 +10,7 @@ import random
 INITIAL_JPY = 1000000  # 初期資金100万円
 BTC_HOLDINGS = 0
 TICK_INTERVAL = 3  # 3秒ごとに取引
-FEE_RATE = 0.001  # 0.2% の手数料
+FEE_RATE = 0.0008  # 0.08% の手数料
 API = ccxt.bitflyer()
 
 
