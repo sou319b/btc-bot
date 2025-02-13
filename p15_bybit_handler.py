@@ -72,30 +72,28 @@ class BybitHandler:
     def get_wallet_info(self):
         """USDT残高とBTC保有量を取得する関数"""
         try:
-            wallet = self.session.get_wallet_balance(accountType="UNIFIED", coin="USDT")
+            # スポット口座の残高を取得
+            spot_balance = self.session.get_coins_balance(
+                accountType="SPOT",
+                coin="USDT"
+            )
             usdt_balance = 0.0
-            if 'result' in wallet and 'list' in wallet['result']:
-                for account in wallet['result']['list']:
-                    if 'coin' in account:
-                        for coin_info in account['coin']:
-                            if coin_info['coin'] == 'USDT':
-                                usdt_balance = float(coin_info['walletBalance'])
-                                break
+            if 'result' in spot_balance and 'balance' in spot_balance['result']:
+                usdt_balance = float(spot_balance['result']['balance'])
             self.logger.debug(f"USDT残高を取得: {usdt_balance} USDT")
         except Exception as e:
             self.logger.error(f"USDT残高取得エラー: {e}")
             usdt_balance = 0.0
 
         try:
-            wallet = self.session.get_wallet_balance(accountType="UNIFIED", coin="BTC")
+            # スポット口座のBTC残高を取得
+            btc_balance = self.session.get_coins_balance(
+                accountType="SPOT",
+                coin="BTC"
+            )
             btc_holding = 0.0
-            if 'result' in wallet and 'list' in wallet['result']:
-                for account in wallet['result']['list']:
-                    if 'coin' in account:
-                        for coin_info in account['coin']:
-                            if coin_info['coin'] == 'BTC':
-                                btc_holding = float(coin_info['walletBalance'])
-                                break
+            if 'result' in btc_balance and 'balance' in btc_balance['result']:
+                btc_holding = float(btc_balance['result']['balance'])
             self.logger.debug(f"BTC保有量を取得: {btc_holding} BTC")
         except Exception as e:
             self.logger.error(f"BTC残高取得エラー: {e}")
@@ -106,14 +104,16 @@ class BybitHandler:
     def place_buy_order(self, qty):
         """買い注文を実行する関数"""
         try:
+            # スポット注文を実行
             order = self.session.place_order(
                 category="spot",
                 symbol="BTCUSDT",
                 side="Buy",
                 orderType="Market",
-                qty=str(round(qty, 3))
+                qty=str(round(qty, 3)),
+                orderFilter="ORDER"  # スポット注文用のフィルター
             )
-            self.logger.info(f"買い注文を実行: 数量={qty} BTC")
+            self.logger.info(f"スポット買い注文を実行: 数量={qty} BTC")
             return order
         except Exception as e:
             self.logger.error(f"買い注文エラー: {e}")
@@ -122,14 +122,16 @@ class BybitHandler:
     def place_sell_order(self, qty):
         """売り注文を実行する関数"""
         try:
+            # スポット注文を実行
             order = self.session.place_order(
                 category="spot",
                 symbol="BTCUSDT",
                 side="Sell",
                 orderType="Market",
-                qty=str(round(qty, 3))
+                qty=str(round(qty, 3)),
+                orderFilter="ORDER"  # スポット注文用のフィルター
             )
-            self.logger.info(f"売り注文を実行: 数量={qty} BTC")
+            self.logger.info(f"スポット売り注文を実行: 数量={qty} BTC")
             return order
         except Exception as e:
             self.logger.error(f"売り注文エラー: {e}")

@@ -11,11 +11,15 @@ class TradingBot:
         self.last_trade_time = None
         self.min_hold_time = 60  # 最低1分間のホールド時間
         self.info_interval = 10   # 情報表示の間隔（秒）
+        self.min_trade_amount = 10  # 最小取引額（USDT）
+        self.max_trade_amount = 100  # 最大取引額（USDT）
+        self.buy_count = 0   # 買い取引回数
+        self.sell_count = 0  # 売り取引回数
         self.setup_logging()
 
     def setup_logging(self):
         """ロギングの設定を行う"""
-        log_filename = f"trading_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        log_filename = f"logs/trading_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s',
@@ -40,6 +44,7 @@ class TradingBot:
         log_message += f"💵 USDT残高 ：{usdt_balance:,.2f} USDT\n"
         log_message += f"₿ BTC保有量：{btc_holding:.6f} BTC\n"
         log_message += f"📊 総資産額 ：{total_assets:,.2f} USDT\n"
+        log_message += f"🔄 取引回数 ：買い{self.buy_count}回 / 売り{self.sell_count}回\n"
         
         if self.initial_total is not None:
             profit = total_assets - self.initial_total
@@ -108,7 +113,7 @@ class TradingBot:
 
                 # 取引ロジック
                 if current_price < self.best_price * 0.995:  # 0.5%下落で買い
-                    if usdt_balance > 0:
+                    if usdt_balance >= self.min_trade_amount:  # 最小取引額以上の残高があるか確認
                         buy_msg = "買いシグナル検出。買い注文を実行中..."
                         print(buy_msg)
                         self.logger.info(buy_msg)
@@ -116,53 +121,64 @@ class TradingBot:
                         # 下落率に応じて取引量を調整
                         drop_percentage = abs(price_diff)
                         if drop_percentage > 1.0:  # 1%以上の下落
-                            buy_amount_usdt = min(usdt_balance, 100000)  # より大きな取引
+                            buy_amount_usdt = min(usdt_balance, self.max_trade_amount)  # 最大取引額を考慮
                         else:
-                            buy_amount_usdt = min(usdt_balance, 50000)
+                            buy_amount_usdt = min(usdt_balance, self.max_trade_amount * 0.5)  # 最大取引額の50%
+                        
+                        # 最小取引額以上になるように調整
+                        buy_amount_usdt = max(buy_amount_usdt, self.min_trade_amount)
                         
                         btc_qty = round(buy_amount_usdt / current_price, 3)
-                        if btc_qty < 0.001:
-                            btc_qty = 0.001
-                            adjust_msg = "最小注文数量の0.001 BTCに調整しました"
-                            print(adjust_msg)
-                            self.logger.info(adjust_msg)
                         
                         order = self.bybit.place_buy_order(btc_qty)
                         if order:
                             self.last_trade_time = current_timestamp
+                            self.buy_count += 1  # 買い取引回数をインクリメント
                             order_msg = f"買い注文実行: {order}"
                             print(order_msg)
                             self.logger.info(order_msg)
                             self.best_price = current_price
-                            time.sleep(self.info_interval)  # 注文後の待機時間を追加
+                            time.sleep(self.info_interval)
+                    else:
+                        insufficient_msg = f"USDT残高が最小取引額（{self.min_trade_amount} USDT）未満のため、取引をスキップします"
+                        print(insufficient_msg)
+                        self.logger.info(insufficient_msg)
 
                 elif current_price > self.best_price * 1.005:  # 0.5%上昇で売り
                     if btc_holding > 0:
-                        sell_msg = "売りシグナル検出。売り注文を実行中..."
-                        print(sell_msg)
-                        self.logger.info(sell_msg)
-                        
-                        # 上昇率に応じて取引量を調整
-                        rise_percentage = price_diff
-                        if rise_percentage > 1.0:  # 1%以上の上昇
-                            btc_qty = round(btc_holding * 0.75, 3)  # より大きな取引
+                        btc_value = btc_holding * current_price
+                        if btc_value >= self.min_trade_amount:  # BTCの価値が最小取引額以上か確認
+                            sell_msg = "売りシグナル検出。売り注文を実行中..."
+                            print(sell_msg)
+                            self.logger.info(sell_msg)
+                            
+                            # 上昇率に応じて取引量を調整
+                            rise_percentage = price_diff
+                            max_sell_amount = min(btc_value, self.max_trade_amount)  # 最大取引額を考慮
+                            
+                            if rise_percentage > 1.0:  # 1%以上の上昇
+                                sell_amount_usdt = max_sell_amount  # 最大取引額
+                            else:
+                                sell_amount_usdt = max_sell_amount * 0.5  # 最大取引額の50%
+                            
+                            # 最小取引額以上になるように調整
+                            sell_amount_usdt = max(sell_amount_usdt, self.min_trade_amount)
+                            
+                            btc_qty = round(sell_amount_usdt / current_price, 3)
+                            
+                            order = self.bybit.place_sell_order(btc_qty)
+                            if order:
+                                self.last_trade_time = current_timestamp
+                                self.sell_count += 1  # 売り取引回数をインクリメント
+                                order_msg = f"売り注文実行: {order}"
+                                print(order_msg)
+                                self.logger.info(order_msg)
+                                self.best_price = current_price
+                                time.sleep(self.info_interval)
                         else:
-                            btc_qty = round(btc_holding * 0.5, 3)
-                        
-                        if btc_qty < 0.001:
-                            btc_qty = 0.001
-                            adjust_msg = "最小注文数量の0.001 BTCに調整しました"
-                            print(adjust_msg)
-                            self.logger.info(adjust_msg)
-                        
-                        order = self.bybit.place_sell_order(btc_qty)
-                        if order:
-                            self.last_trade_time = current_timestamp
-                            order_msg = f"売り注文実行: {order}"
-                            print(order_msg)
-                            self.logger.info(order_msg)
-                            self.best_price = current_price
-                            time.sleep(self.info_interval)  # 注文後の待機時間を追加
+                            insufficient_msg = f"BTC保有量の価値が最小取引額（{self.min_trade_amount} USDT）未満のため、取引をスキップします"
+                            print(insufficient_msg)
+                            self.logger.info(insufficient_msg)
 
                 time.sleep(self.info_interval)
 
