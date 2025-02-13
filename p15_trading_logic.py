@@ -9,7 +9,7 @@ class TradingBot:
         self.initial_total = None
         self.best_price = None
         self.last_trade_time = None
-        self.min_hold_time = 180  # 最低3分間のホールド時間
+        self.min_hold_time = 60  # 最低1分間のホールド時間
         self.info_interval = 10   # 情報表示の間隔（秒）
         self.setup_logging()
 
