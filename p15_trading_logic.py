@@ -120,7 +120,7 @@ class TradingBot:
                         else:
                             buy_amount_usdt = min(usdt_balance, 50000)
                         
-                        btc_qty = buy_amount_usdt / current_price
+                        btc_qty = round(buy_amount_usdt / current_price, 3)
                         if btc_qty < 0.001:
                             btc_qty = 0.001
                             adjust_msg = "最小注文数量の0.001 BTCに調整しました"
@@ -145,9 +145,9 @@ class TradingBot:
                         # 上昇率に応じて取引量を調整
                         rise_percentage = price_diff
                         if rise_percentage > 1.0:  # 1%以上の上昇
-                            btc_qty = btc_holding * 0.75  # より大きな取引
+                            btc_qty = round(btc_holding * 0.75, 3)  # より大きな取引
                         else:
-                            btc_qty = btc_holding * 0.5
+                            btc_qty = round(btc_holding * 0.5, 3)
                         
                         if btc_qty < 0.001:
                             btc_qty = 0.001

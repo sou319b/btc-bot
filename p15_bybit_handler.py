@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from pybit.unified_trading import HTTP
 from dotenv import load_dotenv
 
@@ -11,14 +12,48 @@ class BybitHandler:
         # ロガーの設定
         self.logger = logging.getLogger(__name__)
         
+        # サーバー時刻との差分を初期化
+        self.time_offset = 0
+        
+        # 初期化時にサーバー時刻との同期を実行
+        if not self._sync_time():
+            self.logger.error("サーバー時刻との同期に失敗しました")
+            return
+            
         # Bybitテストネット用のAPIクライアントを初期化
         self.session = HTTP(
             testnet=True,
             api_key=os.getenv('BYBIT_TEST_API_KEY'),
             api_secret=os.getenv('BYBIT_TEST_SECRET'),
-            recv_window=20000
+            recv_window=5000  # 5秒に設定（ドキュメント推奨値）
         )
         self.logger.info("Bybit APIクライアントを初期化しました")
+
+    def _sync_time(self):
+        """サーバー時刻との同期を行う"""
+        try:
+            # 時刻同期用の一時的なセッション
+            temp_session = HTTP(testnet=True)
+            server_time = temp_session.get_server_time()
+            
+            if 'result' not in server_time or 'timeSecond' not in server_time['result']:
+                self.logger.error("サーバー時刻の取得に失敗しました")
+                return False
+                
+            server_timestamp = int(server_time['result']['timeSecond'])
+            local_timestamp = int(time.time())
+            self.time_offset = server_timestamp - local_timestamp
+            
+            self.logger.info(f"サーバー時刻との差: {self.time_offset}秒")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"サーバー時刻同期エラー: {e}")
+            return False
+
+    def _get_timestamp(self):
+        """補正済みのタイムスタンプを取得"""
+        return int(time.time() + self.time_offset)
 
     def get_btc_price(self):
         """BTCの現在価格を取得する関数"""
@@ -72,12 +107,11 @@ class BybitHandler:
         """買い注文を実行する関数"""
         try:
             order = self.session.place_order(
-                category="linear",
+                category="spot",
                 symbol="BTCUSDT",
                 side="Buy",
-                order_type="Market",
-                qty=str(round(qty, 6)),
-                time_in_force="GoodTillCancel"
+                orderType="Market",
+                qty=str(round(qty, 3))
             )
             self.logger.info(f"買い注文を実行: 数量={qty} BTC")
             return order
@@ -89,12 +123,11 @@ class BybitHandler:
         """売り注文を実行する関数"""
         try:
             order = self.session.place_order(
-                category="linear",
+                category="spot",
                 symbol="BTCUSDT",
                 side="Sell",
-                order_type="Market",
-                qty=str(round(qty, 6)),
-                time_in_force="GoodTillCancel"
+                orderType="Market",
+                qty=str(round(qty, 3))
             )
             self.logger.info(f"売り注文を実行: 数量={qty} BTC")
             return order

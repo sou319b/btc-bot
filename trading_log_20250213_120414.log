@@ -1,0 +1,4 @@
+2025-02-13 12:04:14,953 - INFO - 初期価格を取得中...
+2025-02-13 12:04:15,305 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415855224],server_timestamp[1739415852661],recv_window[20000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-02-13 12:04:18,390 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415858307],server_timestamp[1739415855746],recv_window[22500] (ErrCode: 10002). Added 2.5 seconds to recv_window. 1 retries remain.
+2025-02-13 12:04:21,485 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415861400],server_timestamp[1739415858842],recv_window[25000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 0 retries remain.
