@@ -1,3 +1,6 @@
+# Bybit Unified Trading API Documentation:
+# https://bybit-exchange.github.io/docs/unified/v3/spot/
+
 import os
 import logging
 import time
@@ -63,7 +66,7 @@ class BybitHandler:
                 category="spot",
                 symbol="BTCUSDT"
             )
-            price = float(ticker['result']['list'][0]['lastPrice'])
+            price = float(ticker['result'][0]['last_price'])
             self.logger.debug(f"BTCの現在価格を取得: {price} USDT")
             return price
         except Exception as e:

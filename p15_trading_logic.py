@@ -11,7 +11,7 @@ class TradingBot:
         self.last_trade_time = None
         self.min_hold_time = 60  # 最低1分間のホールド時間
         self.info_interval = 10   # 情報表示の間隔（秒）
-        self.min_trade_amount = 10  # 最小取引額（USDT）
+        self.min_trade_amount = 100  # 最小取引額（USDT）
         self.max_trade_amount = 100  # 最大取引額（USDT）
         self.buy_count = 0   # 買い取引回数
         self.sell_count = 0  # 売り取引回数
@@ -113,7 +113,11 @@ class TradingBot:
 
                 # 取引ロジック
                 if current_price < self.best_price * 0.995:  # 0.5%下落で買い
-                    if usdt_balance >= self.min_trade_amount:  # 最小取引額以上の残高があるか確認
+                    if btc_holding > 0:
+                        skip_msg = "既にBTCポジションが存在するため、買い注文をスキップします"
+                        print(skip_msg)
+                        self.logger.info(skip_msg)
+                    elif usdt_balance >= self.min_trade_amount:  # 最小取引額以上の残高があるか確認
                         buy_msg = "買いシグナル検出。買い注文を実行中..."
                         print(buy_msg)
                         self.logger.info(buy_msg)
