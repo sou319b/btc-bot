@@ -28,50 +28,12 @@ def get_btc_price():
     """BTCの現在価格を取得"""
     try:
         ticker = session.get_tickers(
-            category="linear",
+            category="spot",
             symbol="BTCUSDT"
         )
         return float(ticker['result']['list'][0]['lastPrice'])
     except Exception as e:
         print(f"価格取得中にエラーが発生しました: {e}")
-        return None
-
-def get_position():
-    """現在のポジション情報を取得"""
-    try:
-        position = session.get_positions(
-            category="linear",
-            symbol="BTCUSDT"
-        )
-        if position['result']['list']:
-            size = float(position['result']['list'][0]['size'])
-            side = position['result']['list'][0]['side']
-            return size, side
-        return 0, None
-    except Exception as e:
-        print(f"ポジション情報の取得中にエラーが発生しました: {e}")
-        return 0, None
-
-def place_order(quantity, side):
-    """
-    注文を実行する
-    :param quantity: 取引量
-    :param side: 'Buy' または 'Sell'
-    """
-    try:
-        order = session.place_order(
-            category="linear",
-            symbol="BTCUSDT",
-            side=side,
-            orderType="Market",
-            qty=str(quantity),
-            reduceOnly=False,
-            closeOnTrigger=False
-        )
-        print(f"注文が成功しました: {order}")
-        return order
-    except Exception as e:
-        print(f"注文中にエラーが発生しました: {e}")
         return None
 
 def get_wallet_balance():
@@ -92,12 +54,61 @@ def get_wallet_balance():
         print(f"残高取得中にエラーが発生しました: {e}")
         return None
 
+def get_btc_wallet_balance():
+    """ウォレットのBTC残高を取得"""
+    try:
+        wallet = session.get_wallet_balance(
+            accountType="UNIFIED",
+            coin="BTC"
+        )
+        if 'result' in wallet and 'list' in wallet['result']:
+            for account in wallet['result']['list']:
+                for coin in account['coin']:
+                    if coin['coin'] == 'BTC':
+                        return float(coin['walletBalance'])
+        print("BTCの残高が見つかりませんでした")
+        return None
+    except Exception as e:
+        print(f"BTC残高取得中にエラーが発生しました: {e}")
+        return None
+
+def place_order(quantity, side):
+    """
+    注文を実行する
+    :param quantity: 市場注文の場合、BuyならUSDT金額(notional)、SellならBTC数量(qty)
+    :param side: 'Buy' または 'Sell'
+    """
+    try:
+        if side == "Buy":
+            # For market buy orders on spot, use quoteQty (USDTの注文額)
+            order = session.place_order(
+                category="spot",
+                symbol="BTCUSDT",
+                side=side,
+                orderType="Market",
+                quoteQty=str(quantity)
+            )
+        else:
+            # For sell orders, use qty (BTC数量)
+            order = session.place_order(
+                category="spot",
+                symbol="BTCUSDT",
+                side=side,
+                orderType="Market",
+                qty=str(quantity)
+            )
+        print(f"注文が成功しました: {order}")
+        return order
+    except Exception as e:
+        print(f"注文中にエラーが発生しました: {e}")
+        return None
+
 def show_menu():
     """メニューを表示"""
     print("\n=== Bybit BTCトレーダー ===")
     print("1: BTCを購入")
     print("2: BTCを売却")
-    print("3: 現在のポジション確認")
+    print("3: ウォレットの確認")
     print("4: 終了")
     return input("選択してください (1-4): ")
 
@@ -116,50 +127,39 @@ def main():
                 print("価格の取得に失敗しました")
                 continue
                 
-            position_size, position_side = get_position()
+            btc_balance = get_btc_wallet_balance()
+            usdt_balance = get_wallet_balance()
             print(f"\n現在のBTC価格: {btc_price:,.2f} USDT")
-            print(f"現在のポジション: {position_size} BTC ({position_side if position_side else '無し'})")
+            print(f"ウォレットのBTC残高: {btc_balance if btc_balance is not None else 0} BTC")
+            print(f"ウォレットのUSDT残高: {usdt_balance if usdt_balance is not None else 0} USDT")
             
-            if choice == "1":  # 購入
-                usdt_balance = get_wallet_balance()
+            if choice == "1":  # BTCを購入
                 if usdt_balance is None:
                     continue
                 
                 print(f"USDTの残高: {usdt_balance:,.2f}")
                 investment_amount = usdt_balance * 0.5
-                btc_quantity = round(investment_amount / btc_price, 3)
-                
-                if btc_quantity < 0.001:
-                    btc_quantity = 0.001
-                    print("最小注文数量の0.001 BTCに調整しました")
-                
-                if btc_quantity > 0:
-                    print(f"{btc_quantity} BTCを購入します...")
-                    order = place_order(btc_quantity, "Buy")
-                else:
-                    print("残高が不足しています")
-                    
-            elif choice == "2":  # 売却
-                if position_size <= 0:
-                    print("売却可能なBTCポジションがありません")
+                # 最小注文額のチェック（例: 10 USDT以上）
+                if investment_amount < 10:
+                    investment_amount = 10
+                    print("最小注文額 10 USDTに調整しました")
+                estimated_btc = round(investment_amount / btc_price, 3)
+                print(f"約 {estimated_btc} BTC(約 {investment_amount:,.2f} USDT分)を購入します...")
+                order = place_order(investment_amount, "Buy")
+            
+            elif choice == "2":  # BTCを売却
+                if btc_balance is None or btc_balance < 0.001:
+                    print("売却可能なBTCがありません")
                     continue
-                    
-                print(f"現在の保有量: {position_size} BTC")
-                sell_quantity = position_size
-                if sell_quantity >= 0.001:
-                    print(f"{sell_quantity} BTCを売却します...")
-                    order = place_order(sell_quantity, "Sell")
-                else:
-                    print("売却可能な最小数量に満たないため、売却できません")
-                    
-            elif choice == "3":  # ポジション確認
-                if position_size > 0:
-                    value = position_size * btc_price
-                    print(f"保有BTC: {position_size} BTC")
-                    print(f"評価額: {value:,.2f} USDT")
-                else:
-                    print("現在ポジションはありません")
-                    
+                sell_quantity = btc_balance
+                print(f"{sell_quantity} BTCを売却します...")
+                order = place_order(sell_quantity, "Sell")
+            
+            elif choice == "3":  # ウォレットの確認
+                print("ウォレットの残高:")
+                print(f"BTC: {btc_balance if btc_balance is not None else 0} BTC")
+                print(f"USDT: {usdt_balance if usdt_balance is not None else 0} USDT")
+            
             else:
                 print("無効な選択です。1-4の数字を入力してください。")
                 
