@@ -87,28 +87,40 @@ def place_order(quantity, side):
             btc_quantity = round(float(quantity) / btc_price, 3)  # 小数点以下3桁に制限
             
             # 最小取引量のチェック
-            if btc_quantity < 0.003:
+            if btc_quantity < 0.001:  # 最小取引量を0.001 BTCに設定
                 raise Exception("取引量が小さすぎます。より大きな金額で取引してください。")
+            
+            # 指値注文の価格を現在価格より少し高めに設定（約0.1%）
+            limit_price = round(btc_price * 1.001, 2)
             
             order = session.place_order(
                 category="spot",
                 symbol="BTCUSDT",
                 side=side,
-                orderType="Market",
-                qty=str(btc_quantity)  # BTCの数量を指定
+                orderType="Limit",
+                qty=str(btc_quantity),  # BTCの数量を指定
+                price=str(limit_price),  # 指値価格を指定
+                timeInForce="GTC"  # Good Till Cancel
             )
         else:
             # For sell orders, use qty (BTC数量)
             # 小数点以下3桁に制限
             quantity = round(float(quantity), 3)
-            if quantity < 0.003:
-                raise Exception("取引量が小さすぎます。最小取引量は0.003 BTCです。")
+            if quantity < 0.001:  # 最小取引量を0.001 BTCに設定
+                raise Exception("取引量が小さすぎます。最小取引量は0.001 BTCです。")
+            
+            # 指値注文の価格を現在価格より少し低めに設定（約0.1%）
+            btc_price = get_btc_price()
+            limit_price = round(btc_price * 0.999, 2)
+            
             order = session.place_order(
                 category="spot",
                 symbol="BTCUSDT",
                 side=side,
-                orderType="Market",
-                qty=str(quantity)
+                orderType="Limit",
+                qty=str(quantity),
+                price=str(limit_price),  # 指値価格を指定
+                timeInForce="GTC"  # Good Till Cancel
             )
         print(f"注文が成功しました: {order}")
         return order
@@ -125,12 +137,12 @@ def get_trading_limits(balance, btc_price, side):
     :return: (最小取引額, 最大取引額)
     """
     if side == "Buy":
-        min_btc = 0.003  # 最小BTC取引量
-        min_trade = max(100, min_btc * btc_price)  # 最小取引額を計算（100 USDTまたはBTC最小量相当のUSDT）
+        min_btc = 0.001  # 最小BTC取引量を0.001に設定
+        min_trade = max(10, min_btc * btc_price)  # 最小取引額を計算（10 USDTまたはBTC最小量相当のUSDT）
         max_trade = min(balance, 100000)  # 残高か100000USDTの小さい方
         return min_trade, max_trade
     else:
-        min_trade = 0.003  # 最小BTC取引量
+        min_trade = 0.001  # 最小BTC取引量を0.001に設定
         max_trade = min(balance, 100)  # 残高か100BTCの小さい方
         return min_trade, max_trade
 
@@ -186,7 +198,7 @@ def main():
             print(f"ウォレットのUSDT残高: {usdt_balance if usdt_balance is not None else 0} USDT")
             
             if choice == "1":  # BTCを購入
-                min_btc = 0.003
+                min_btc = 0.001  # 最小BTC取引量を0.001に設定
                 min_usdt = min_btc * btc_price
                 if usdt_balance is None or usdt_balance < min_usdt:
                     print(f"取引に必要な残高（最小{min_usdt:.2f} USDT）がありません")
@@ -199,8 +211,8 @@ def main():
                 order = place_order(investment_amount, "Buy")
             
             elif choice == "2":  # BTCを売却
-                if btc_balance is None or btc_balance < 0.003:  # 最小取引量を0.003 BTCに変更
-                    print("売却可能なBTCがありません（最小0.003 BTC）")
+                if btc_balance is None or btc_balance < 0.001:  # 最小取引量を0.001 BTCに設定
+                    print("売却可能なBTCがありません（最小0.001 BTC）")
                     continue
                 
                 min_trade, max_trade = get_trading_limits(btc_balance, btc_price, "Sell")
