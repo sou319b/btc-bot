@@ -1,10 +1,9 @@
-#利益がでるbot
-#成功例
-#手数料なし
+# より正確な価格取得を行うトレーディングボット
+# 実際の市場価格を使用
+# 手数料なし
 
 import ccxt
 import time
-import random
 
 # 初期設定
 INITIAL_JPY = 1000000  # 初期資金100万円
@@ -121,4 +120,4 @@ def simulate_trading():
             time.sleep(60)  # エラー時は60秒待機
 
 if __name__ == "__main__":
-    simulate_trading()
+    simulate_trading() 

@@ -70,7 +70,7 @@ class BybitHandler:
                 category="spot",
                 symbol="BTCUSDT"
             )
-            price = float(ticker['result'][0]['last_price'])
+            price = float(ticker['result']['list'][0]['lastPrice'])
             self.logger.debug(f"BTCの現在価格を取得: {price} USDT")
             return price
         except Exception as e:
