@@ -1,5 +1,11 @@
+
+"""
+現物取引を行うプログラム
+"""
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 
 import os
 import sys
