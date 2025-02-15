@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 import logging
 from p14_bybit_handler import BybitHandler
+import math
 
 class TradingBot:
     def __init__(self):
@@ -132,7 +133,7 @@ class TradingBot:
                         # 最小取引額以上になるように調整
                         buy_amount_usdt = max(buy_amount_usdt, self.min_trade_amount)
                         
-                        btc_qty = round(buy_amount_usdt / current_price, 3)
+                        btc_qty = math.ceil((buy_amount_usdt / current_price) * 1000) / 1000
                         
                         order = self.bybit.place_buy_order(btc_qty)
                         if order:
@@ -168,7 +169,9 @@ class TradingBot:
                             # 最小取引額以上になるように調整
                             sell_amount_usdt = max(sell_amount_usdt, self.min_trade_amount)
                             
-                            btc_qty = round(sell_amount_usdt / current_price, 3)
+                            btc_qty = math.ceil((sell_amount_usdt / current_price) * 1000) / 1000
+                            if btc_qty > btc_holding:
+                                btc_qty = btc_holding
                             
                             order = self.bybit.place_sell_order(btc_qty)
                             if order:

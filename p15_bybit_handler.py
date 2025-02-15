@@ -124,7 +124,7 @@ class BybitHandler:
             
             # 最小取引額（10 USDT）未満の場合は調整
             MIN_ORDER_VALUE = 100  # 安全のため100 USDTに設定
-            if order_value < MIN_ORDER_VALUE:
+            if order_value <= MIN_ORDER_VALUE:
                 adjusted_qty = math.ceil(MIN_ORDER_VALUE / current_price * 10**6) / 10**6  # 小数点以下6桁まで許可
                 self.logger.info(f"取引額が最小制限を下回るため、数量を{adjusted_qty} BTCに調整します")
                 qty = adjusted_qty
