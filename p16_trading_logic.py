@@ -114,11 +114,7 @@ class TradingBot:
 
                 # 取引ロジック
                 if current_price < self.best_price * 0.995:  # 0.5%下落で買い
-                    if btc_holding > 0:
-                        skip_msg = "既にBTCポジションが存在するため、買い注文をスキップします"
-                        print(skip_msg)
-                        self.logger.info(skip_msg)
-                    elif usdt_balance >= self.min_trade_amount:  # 最小取引額以上の残高があるか確認
+                    if usdt_balance >= self.min_trade_amount:  # 最小取引額以上の残高があるか確認
                         buy_msg = "買いシグナル検出。買い注文を実行中..."
                         print(buy_msg)
                         self.logger.info(buy_msg)
