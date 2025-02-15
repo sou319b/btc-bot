@@ -1,6 +1,7 @@
-
 """
 現物取引を行うプログラム
+最低額5USDTで取引可能
+
 """
 
 #!/usr/bin/env python
@@ -11,7 +12,7 @@ import os
 import sys
 from pybit.unified_trading import HTTP
 
-MIN_USDT_VALUE = 1  # 最小注文金額（USDT）
+MIN_USDT_VALUE = 5  # 最小注文金額（USDT）
 MIN_BTC_QTY = 0.000100  # 最小BTC取引量
 
 def round_btc(amount):
@@ -43,8 +44,7 @@ def main():
         )
         current_price = float(ticker["result"]["list"][0]["lastPrice"])
         print(f"現在のBTC価格: {current_price} USDT")
-        min_usdt_value = MIN_BTC_QTY * current_price
-        print(f"最小取引金額: {min_usdt_value:.2f} USDT（{MIN_BTC_QTY} BTC）")
+        print(f"最小取引金額: {MIN_USDT_VALUE} USDT")
     except Exception as e:
         print("マーケット情報の取得に失敗しました。", e)
         sys.exit(1)
@@ -62,8 +62,8 @@ def main():
         if order_type == "1":  # USDT金額で指定
             order_value_input = input("注文金額（USDT）を入力してください: ").strip()
             order_value = float(order_value_input)
-            if order_value < min_usdt_value:
-                print(f"注文金額が小さすぎます。最小注文金額は {min_usdt_value:.2f} USDT（{MIN_BTC_QTY} BTC相当）です。")
+            if order_value < MIN_USDT_VALUE:
+                print(f"注文金額が小さすぎます。最小注文金額は {MIN_USDT_VALUE} USDTです。")
                 sys.exit(1)
             
             if side == "Buy":
@@ -73,9 +73,6 @@ def main():
                 print(f"概算取得量: {round_btc(estimated_btc)} BTC")
             else:
                 btc_amount = order_value / current_price  # 売り注文は相当するBTC数量を計算
-                if btc_amount < MIN_BTC_QTY:
-                    print(f"取引量が小さすぎます。最小取引量は {MIN_BTC_QTY} BTCです。")
-                    sys.exit(1)
                 btc_amount = round_btc(btc_amount)  # 5桁に丸める
                 qty = btc_amount
                 display_amount = f"{order_value} USDT（{btc_amount} BTC）"

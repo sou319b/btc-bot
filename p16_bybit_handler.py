@@ -21,7 +21,7 @@ class BybitHandler:
         
         # 取引制限の設定
         self.MIN_BTC_QTY = 0.000100  # 最小BTC取引量
-        self.MIN_USDT_VALUE = 1  # 最小注文金額（USDT）
+        self.MIN_USDT_VALUE = 5  # 最小注文金額（USDT）を5に設定
         
         # 初期化時にサーバー時刻との同期を実行
         if not self._sync_time():
@@ -134,24 +134,30 @@ class BybitHandler:
                 
             order_value = qty * current_price
             
-            # 最小取引量のチェック
-            if qty < self.MIN_BTC_QTY:
-                self.logger.error(f"取引量が小さすぎます。最小取引量は {self.MIN_BTC_QTY} BTCです。")
+            # 最小取引額のチェック
+            if order_value < self.MIN_USDT_VALUE:
+                self.logger.error(f"取引額が最小制限（{self.MIN_USDT_VALUE} USDT）を下回っています")
+                return None
+
+            # 取引直前の残高チェック
+            usdt_balance, _ = self.get_wallet_info()
+            if usdt_balance < order_value:
+                self.logger.error(f"USDT残高不足: 必要額={order_value:.2f} USDT, 残高={usdt_balance:.2f} USDT")
                 return None
             
-            # 数量を5桁に丸める
-            rounded_qty = self._round_btc(qty)
+            # USDTベースで注文を実行（金額を小数点以下2桁に丸める）
+            rounded_value = "{:.2f}".format(order_value)
             
-            # スポット注文を実行
             order = self.session.place_order(
                 category="spot",
                 symbol="BTCUSDT",
                 side="Buy",
                 orderType="Market",
-                qty=rounded_qty,
-                orderFilter="ORDER"  # スポット注文用のフィルター
+                qty=rounded_value,  # 丸めた金額を使用
+                isQuoteQty=True,  # USDT金額での注文を指定
+                orderFilter="ORDER"
             )
-            self.logger.info(f"スポット買い注文を実行: 数量={rounded_qty} BTC（想定取引額: {float(rounded_qty) * current_price:.2f} USDT）")
+            self.logger.info(f"スポット買い注文を実行: 金額={rounded_value} USDT（想定数量: {qty} BTC）")
             return order
         except Exception as e:
             self.logger.error(f"買い注文エラー: {e}")
@@ -168,9 +174,15 @@ class BybitHandler:
                 
             order_value = qty * current_price
             
-            # 最小取引量のチェック
-            if qty < self.MIN_BTC_QTY:
-                self.logger.error(f"取引量が小さすぎます。最小取引量は {self.MIN_BTC_QTY} BTCです。")
+            # 最小取引額のチェック
+            if order_value < self.MIN_USDT_VALUE:
+                self.logger.error(f"取引額が最小制限（{self.MIN_USDT_VALUE} USDT）を下回っています")
+                return None
+
+            # 取引直前のBTC残高チェック
+            _, btc_balance = self.get_wallet_info()
+            if btc_balance < qty:
+                self.logger.error(f"BTC残高不足: 必要数量={qty:.5f} BTC, 残高={btc_balance:.5f} BTC")
                 return None
             
             # 数量を5桁に丸める
@@ -183,9 +195,9 @@ class BybitHandler:
                 side="Sell",
                 orderType="Market",
                 qty=rounded_qty,
-                orderFilter="ORDER"  # スポット注文用のフィルター
+                orderFilter="ORDER"
             )
-            self.logger.info(f"スポット売り注文を実行: 数量={rounded_qty} BTC（想定取引額: {float(rounded_qty) * current_price:.2f} USDT）")
+            self.logger.info(f"スポット売り注文を実行: 数量={rounded_qty} BTC（想定取引額: {order_value:.2f} USDT）")
             return order
         except Exception as e:
             self.logger.error(f"売り注文エラー: {e}")
