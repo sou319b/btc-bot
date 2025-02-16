@@ -1,9 +1,0 @@
-2025-02-13 12:00:23,268 - INFO - 初期価格を取得中...
-2025-02-13 12:00:23,624 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415623541],server_timestamp[1739415620979],recv_window[20000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
-2025-02-13 12:00:26,709 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415626625],server_timestamp[1739415624065],recv_window[22500] (ErrCode: 10002). Added 2.5 seconds to recv_window. 1 retries remain.
-2025-02-13 12:00:29,801 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415629719],server_timestamp[1739415627158],recv_window[25000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 0 retries remain.
-2025-02-13 12:00:32,802 - ERROR - USDT残高取得エラー: Bad request. retries exceeded maximum. (ErrCode: 400) (ErrTime: 03:00:32).
-Request → GET https://api-testnet.bybit.com/v5/account/wallet-balance: accountType=UNIFIED&coin=USDT.
-2025-02-13 12:00:32,885 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415632802],server_timestamp[1739415630241],recv_window[20000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
-2025-02-13 12:00:35,969 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415635886],server_timestamp[1739415633325],recv_window[22500] (ErrCode: 10002). Added 2.5 seconds to recv_window. 1 retries remain.
-2025-02-13 12:00:39,055 - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1739415638970],server_timestamp[1739415636411],recv_window[25000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 0 retries remain.

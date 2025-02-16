@@ -16,6 +16,15 @@ class BybitHandler:
         # ロガーの設定
         self.logger = logging.getLogger(__name__)
         
+        # APIキーとシークレットの検証
+        api_key = os.getenv('BYBIT_TEST_API_KEY')
+        api_secret = os.getenv('BYBIT_TEST_SECRET')
+        
+        if not api_key or not api_secret:
+            error_msg = "APIキーまたはシークレットが設定されていません。.envファイルを確認してください。"
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+        
         # サーバー時刻との差分を初期化
         self.time_offset = 0
         
@@ -25,17 +34,23 @@ class BybitHandler:
         
         # 初期化時にサーバー時刻との同期を実行
         if not self._sync_time():
-            self.logger.error("サーバー時刻との同期に失敗しました")
-            return
+            error_msg = "サーバー時刻との同期に失敗しました"
+            self.logger.error(error_msg)
+            raise ConnectionError(error_msg)
             
-        # Bybitテストネット用のAPIクライアントを初期化
-        self.session = HTTP(
-            testnet=True,
-            api_key=os.getenv('BYBIT_TEST_API_KEY'),
-            api_secret=os.getenv('BYBIT_TEST_SECRET'),
-            recv_window=5000  # 5秒に設定（ドキュメント推奨値）
-        )
-        self.logger.info("Bybit APIクライアントを初期化しました")
+        try:
+            # Bybitテストネット用のAPIクライアントを初期化
+            self.session = HTTP(
+                testnet=True,
+                api_key=api_key,
+                api_secret=api_secret,
+                recv_window=5000  # 5秒に設定（ドキュメント推奨値）
+            )
+            self.logger.info("Bybit APIクライアントを初期化しました")
+        except Exception as e:
+            error_msg = f"APIクライアントの初期化に失敗しました: {e}"
+            self.logger.error(error_msg)
+            raise ConnectionError(error_msg)
 
     def _sync_time(self):
         """サーバー時刻との同期を行う"""
