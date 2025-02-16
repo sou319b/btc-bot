@@ -1,3 +1,9 @@
+"""
+基本機能：
+過去の価格データを使用して取引戦略のバックテストを実行
+取引シミュレーションの結果を分析
+パフォーマンスの評価と記録
+"""
 import os
 import logging
 from datetime import datetime

@@ -1,3 +1,10 @@
+"""
+主な機能：
+Bybit取引所のAPIとの通信を管理
+BTCUSDTの取引を実行
+残高情報の取得
+価格情報の取得
+"""
 # Bybit Unified Trading API Documentation:
 # https://bybit-exchange.github.io/docs/unified/v3/spot/
 
