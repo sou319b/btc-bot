@@ -1,15 +1,8 @@
-"""
-取引ボット一応完成した
-テストネットで三時間動かしたら
-２＄利益でた。
-最高で４＄くらいまでいったときもあった。
-これからは取引ロジックを改善していく。
-3時間で買い20回 / 売り9回
-"""
+
 import time
 from datetime import datetime
 import logging
-from p17_bybit_handler import BybitHandler
+from p18_bybit_handler import BybitHandler
 import math
 
 class TradingBot:
