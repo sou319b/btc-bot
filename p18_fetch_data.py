@@ -1,8 +1,9 @@
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 from pybit.unified_trading import HTTP
+import time
 
 def setup_logging():
     """ロギングの設定"""
@@ -19,7 +20,7 @@ def setup_logging():
     return logging.getLogger(__name__)
 
 def fetch_historical_data():
-    """過去1週間の価格データを取得"""
+    """過去1週間の1分足価格データを取得"""
     logger = setup_logging()
     
     try:
@@ -33,24 +34,47 @@ def fetch_historical_data():
         end_time = int(datetime.now().timestamp())
         start_time = end_time - (7 * 24 * 60 * 60)  # 1週間前
         
-        # データ取得
-        klines = session.get_kline(
-            category="spot",
-            symbol="BTCUSDT",
-            interval=5,  # 5分足
-            start=start_time * 1000,  # ミリ秒単位
-            end=end_time * 1000,
-            limit=200
-        )
+        all_data = []
+        current_start = start_time
+        
+        logger.info("データの取得を開始します...")
+        
+        while current_start < end_time:
+            # 1000件ずつデータを取得（APIの制限に対応）
+            klines = session.get_kline(
+                category="spot",
+                symbol="BTCUSDT",
+                interval=1,  # 1分足
+                start=current_start * 1000,
+                end=min(current_start + 60000, end_time) * 1000,  # 最大1000分のデータ
+                limit=1000
+            )
+            
+            if 'result' in klines and 'list' in klines['result'] and klines['result']['list']:
+                all_data.extend(klines['result']['list'])
+                last_timestamp = int(klines['result']['list'][0][0]) // 1000
+                current_start = last_timestamp + 60  # 次の開始時刻
+                logger.info(f"データ取得中: {datetime.fromtimestamp(current_start)}")
+            else:
+                current_start += 60000  # エラー時は1000分進める
+            
+            time.sleep(0.1)  # API制限を考慮して少し待機
+        
+        if not all_data:
+            logger.error("データを取得できませんでした")
+            return False
         
         # データをDataFrameに変換
-        df = pd.DataFrame(klines['result']['list'], columns=[
+        df = pd.DataFrame(all_data, columns=[
             'timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover'
         ])
         
         # タイムスタンプを日時に変換
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
         df = df.sort_values('timestamp')
+        
+        # 重複を削除
+        df = df.drop_duplicates(subset=['timestamp'])
         
         # 必要なカラムのみを抽出
         price_data = df[['timestamp', 'close']].copy()
@@ -59,7 +83,10 @@ def fetch_historical_data():
         # CSVファイルとして保存
         csv_filename = f"data/historical_data_{datetime.now().strftime('%Y%m%d')}.csv"
         price_data.to_csv(csv_filename, index=False)
-        logger.info(f"過去1週間のデータを {csv_filename} に保存しました")
+        
+        logger.info(f"過去1週間の1分足データを {csv_filename} に保存しました")
+        logger.info(f"取得期間: {price_data['timestamp'].min()} から {price_data['timestamp'].max()}")
+        logger.info(f"データ数: {len(price_data)}件")
         
         return True
         

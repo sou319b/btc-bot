@@ -53,6 +53,10 @@ class BackTester:
         price_history = []
         results = []
         
+        self.logger.info(f"バックテスト期間: {price_data['timestamp'].min()} から {price_data['timestamp'].max()}")
+        self.logger.info(f"データ数: {len(price_data)}件")
+        self.logger.info("シミュレーションを開始します...")
+        
         for index, row in price_data.iterrows():
             current_price = float(row['close'])
             current_time = row['timestamp']
@@ -71,6 +75,11 @@ class BackTester:
             # 現在の総資産を計算
             total_assets = self.current_balance + (self.btc_balance * current_price)
             
+            # 1時間ごとに進捗を表示
+            if index % 60 == 0:
+                progress = (index + 1) / len(price_data) * 100
+                self.logger.info(f"進捗: {progress:.1f}% 完了 - 現在の資産: {total_assets:.2f} USDT")
+            
             # ポジションクローズの判断
             if self.btc_balance > 0 and self.entry_price and self.strategy.should_close_position(current_price, self.entry_price):
                 # 売り注文をシミュレート
@@ -86,7 +95,8 @@ class BackTester:
                     'price': current_price,
                     'amount': self.btc_balance,
                     'profit': profit,
-                    'profit_pct': profit_pct
+                    'profit_pct': profit_pct,
+                    'total_assets': total_assets
                 })
                 
                 self.btc_balance = 0
@@ -117,7 +127,8 @@ class BackTester:
                             'type': 'BUY',
                             'price': current_price,
                             'amount': btc_qty,
-                            'cost': btc_qty * current_price
+                            'cost': btc_qty * current_price,
+                            'total_assets': total_assets
                         })
                         
                         self.logger.info(f"買い注文実行: 価格={current_price:.2f} USDT, 数量={btc_qty:.6f} BTC")
@@ -137,7 +148,8 @@ class BackTester:
                     'price': current_price,
                     'amount': self.btc_balance,
                     'profit': profit,
-                    'profit_pct': profit_pct
+                    'profit_pct': profit_pct,
+                    'total_assets': total_assets
                 })
                 
                 self.btc_balance = 0
@@ -153,9 +165,12 @@ class BackTester:
                 'usdt_balance': self.current_balance,
                 'btc_balance': self.btc_balance,
                 'total_assets': total_assets,
-                'profit_pct': ((total_assets - self.initial_balance) / self.initial_balance) * 100
+                'profit_pct': ((total_assets - self.initial_balance) / self.initial_balance) * 100,
+                'trend_score': trend_score,
+                'volatility': volatility
             })
         
+        self.logger.info("シミュレーション完了")
         return pd.DataFrame(results)
 
     def save_results(self, results_df):
