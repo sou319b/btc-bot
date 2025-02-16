@@ -139,7 +139,7 @@ class TradingBot:
                 self.print_trade_info("情報", current_time, current_price, usdt_balance, btc_holding, trend_score)
 
                 # 取引ロジック
-                if trend_score < -0.12:  # 下降トレンドで買い
+                if trend_score < -0.25:  # 下降トレンドで買い
                     if usdt_balance >= self.min_trade_amount:
                         buy_msg = "下降トレンド検出。買い注文を実行中..."
                         print(buy_msg)
@@ -147,7 +147,7 @@ class TradingBot:
                         
                         # トレンドの強さに応じて取引量を調整
                         trend_strength = abs(trend_score)
-                        if trend_strength > 0.3:  # 強い下降トレンド
+                        if trend_strength > 0.5:  # 強い下降トレンド
                             buy_amount_usdt = min(usdt_balance, self.max_trade_amount)
                         else:
                             buy_amount_usdt = min(usdt_balance, self.max_trade_amount * 0.7)
@@ -172,7 +172,7 @@ class TradingBot:
                         print(insufficient_msg)
                         self.logger.info(insufficient_msg)
 
-                elif trend_score > 0.12:  # 上昇トレンドで売り
+                elif trend_score > 0.25:  # 上昇トレンドで売り
                     if btc_holding > 0:
                         btc_value = btc_holding * current_price
                         if btc_value >= self.min_trade_amount:
@@ -182,7 +182,7 @@ class TradingBot:
                             
                             # トレンドの強さに応じて取引量を調整
                             trend_strength = abs(trend_score)
-                            if trend_strength > 0.3:  # 強い上昇トレンド
+                            if trend_strength > 0.5:  # 強い上昇トレンド
                                 sell_amount_btc = btc_holding  # 全量売却
                             else:
                                 sell_amount_btc = btc_holding * 0.7  # 70%売却
