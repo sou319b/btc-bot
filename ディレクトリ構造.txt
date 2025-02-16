@@ -1,0 +1,14 @@
+project/
+├── data/                      # 価格データ保存用
+│   └── historical_data_*.csv
+├── logs/                      # ログファイル保存用
+│   ├── data_fetch_log_*.log
+│   └── backtest_log_*.log
+├── results/                   # バックテスト結果保存用
+│   └── backtest_YYYYMMDD_HHMMSS/
+│       ├── backtest_results.csv
+│       ├── trades.json
+│       └── summary.json
+├── p18_fetch_data.py
+├── p18_backtest.py
+└── p18_strategy.py
