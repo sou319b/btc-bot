@@ -1,0 +1,13 @@
+{
+  "initial_balance": 1000,
+  "final_balance": 999.4904217308998,
+  "total_profit": -0.5095782691001887,
+  "total_profit_pct": -0.050957826910018864,
+  "total_fees": 0.9044933691000002,
+  "net_profit": -1.414071638200189,
+  "net_profit_pct": -0.1414071638200189,
+  "total_trades": 18,
+  "buy_count": 9,
+  "sell_count": 9,
+  "average_fee_per_trade": 0.05024963161666668
+}

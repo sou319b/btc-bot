@@ -2,7 +2,7 @@
 基本機能：
 過去の価格データを使用して取引戦略のバックテストを実行
 取引シミュレーションの結果を分析
-パフォーマンスの評価と記録
+パフォーマンスの評価と記録（取引手数料を含む）
 """
 import os
 import logging
@@ -25,6 +25,11 @@ class BackTester:
         self.buy_count = 0
         self.sell_count = 0
         self.trades = []  # 取引履歴
+        
+        # 手数料の設定
+        self.maker_fee = 0.001  # 0.1% メイカー手数料
+        self.taker_fee = 0.001  # 0.1% テイカー手数料
+        self.total_fees = 0     # 合計手数料
         
         # 結果保存用のディレクトリを作成
         self.results_dir = f"results/backtest_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -88,11 +93,14 @@ class BackTester:
             
             # ポジションクローズの判断
             if self.btc_balance > 0 and self.entry_price and self.strategy.should_close_position(current_price, self.entry_price):
-                # 売り注文をシミュレート
+                # 売り注文をシミュレート（手数料を含む）
                 sell_value = self.btc_balance * current_price
-                self.current_balance += sell_value
+                fee = sell_value * self.taker_fee
+                net_value = sell_value - fee
+                self.current_balance += net_value
+                self.total_fees += fee
                 
-                profit = sell_value - (self.btc_balance * self.entry_price)
+                profit = net_value - (self.btc_balance * self.entry_price)
                 profit_pct = (profit / (self.btc_balance * self.entry_price)) * 100
                 
                 self.trades.append({
@@ -100,6 +108,8 @@ class BackTester:
                     'type': 'SELL',
                     'price': current_price,
                     'amount': self.btc_balance,
+                    'fee': fee,
+                    'net_value': net_value,
                     'profit': profit,
                     'profit_pct': profit_pct,
                     'total_assets': total_assets
@@ -109,7 +119,7 @@ class BackTester:
                 self.entry_price = None
                 self.sell_count += 1
                 
-                self.logger.info(f"売り注文実行: 価格={current_price:.2f} USDT, 利益={profit:.2f} USDT ({profit_pct:.2f}%)")
+                self.logger.info(f"売り注文実行: 価格={current_price:.2f} USDT, 手数料={fee:.4f} USDT, 純利益={profit:.2f} USDT ({profit_pct:.2f}%)")
             
             # 買いシグナルの判断
             elif self.strategy.should_buy(trend_score, volatility) and self.btc_balance == 0:
@@ -119,33 +129,41 @@ class BackTester:
                 )
                 
                 if trade_amount >= self.strategy.min_trade_amount:
-                    # BTCの数量を計算
-                    btc_qty = self.strategy.calculate_position_size(current_price, trade_amount)
+                    # BTCの数量を計算（手数料を考慮）
+                    fee = trade_amount * self.taker_fee
+                    available_amount = trade_amount - fee
+                    btc_qty = self.strategy.calculate_position_size(current_price, available_amount)
+                    total_cost = btc_qty * current_price + fee
                     
-                    if btc_qty * current_price <= self.current_balance:
+                    if total_cost <= self.current_balance:
                         self.btc_balance = btc_qty
-                        self.current_balance -= btc_qty * current_price
+                        self.current_balance -= total_cost
                         self.entry_price = current_price
                         self.buy_count += 1
+                        self.total_fees += fee
                         
                         self.trades.append({
                             'timestamp': current_time,
                             'type': 'BUY',
                             'price': current_price,
                             'amount': btc_qty,
-                            'cost': btc_qty * current_price,
+                            'fee': fee,
+                            'cost': total_cost,
                             'total_assets': total_assets
                         })
                         
-                        self.logger.info(f"買い注文実行: 価格={current_price:.2f} USDT, 数量={btc_qty:.6f} BTC")
+                        self.logger.info(f"買い注文実行: 価格={current_price:.2f} USDT, 数量={btc_qty:.6f} BTC, 手数料={fee:.4f} USDT")
             
             # 売りシグナルの判断
             elif self.strategy.should_sell(trend_score) and self.btc_balance > 0:
-                # 売り注文をシミュレート
+                # 売り注文をシミュレート（手数料を含む）
                 sell_value = self.btc_balance * current_price
-                self.current_balance += sell_value
+                fee = sell_value * self.taker_fee
+                net_value = sell_value - fee
+                self.current_balance += net_value
+                self.total_fees += fee
                 
-                profit = sell_value - (self.btc_balance * self.entry_price)
+                profit = net_value - (self.btc_balance * self.entry_price)
                 profit_pct = (profit / (self.btc_balance * self.entry_price)) * 100
                 
                 self.trades.append({
@@ -153,6 +171,8 @@ class BackTester:
                     'type': 'SELL',
                     'price': current_price,
                     'amount': self.btc_balance,
+                    'fee': fee,
+                    'net_value': net_value,
                     'profit': profit,
                     'profit_pct': profit_pct,
                     'total_assets': total_assets
@@ -162,7 +182,7 @@ class BackTester:
                 self.entry_price = None
                 self.sell_count += 1
                 
-                self.logger.info(f"売り注文実行: 価格={current_price:.2f} USDT, 利益={profit:.2f} USDT ({profit_pct:.2f}%)")
+                self.logger.info(f"売り注文実行: 価格={current_price:.2f} USDT, 手数料={fee:.4f} USDT, 純利益={profit:.2f} USDT ({profit_pct:.2f}%)")
             
             # 結果を記録
             results.append({
@@ -171,6 +191,7 @@ class BackTester:
                 'usdt_balance': self.current_balance,
                 'btc_balance': self.btc_balance,
                 'total_assets': total_assets,
+                'total_fees': self.total_fees,
                 'profit_pct': ((total_assets - self.initial_balance) / self.initial_balance) * 100,
                 'trend_score': trend_score,
                 'volatility': volatility
@@ -194,15 +215,21 @@ class BackTester:
         final_total = results_df['total_assets'].iloc[-1]
         total_profit = final_total - self.initial_balance
         total_profit_pct = (total_profit / self.initial_balance) * 100
+        net_profit = total_profit - self.total_fees
+        net_profit_pct = (net_profit / self.initial_balance) * 100
         
         summary = {
             'initial_balance': self.initial_balance,
             'final_balance': final_total,
             'total_profit': total_profit,
             'total_profit_pct': total_profit_pct,
+            'total_fees': self.total_fees,
+            'net_profit': net_profit,
+            'net_profit_pct': net_profit_pct,
             'total_trades': len(self.trades),
             'buy_count': self.buy_count,
-            'sell_count': self.sell_count
+            'sell_count': self.sell_count,
+            'average_fee_per_trade': self.total_fees / len(self.trades) if self.trades else 0
         }
         
         # サマリーをJSONファイルに保存
@@ -214,9 +241,12 @@ class BackTester:
         self.logger.info(f"初期残高　　：{self.initial_balance:,.2f} USDT")
         self.logger.info(f"最終残高　　：{final_total:,.2f} USDT")
         self.logger.info(f"総利益　　　：{total_profit:,.2f} USDT ({total_profit_pct:.2f}%)")
+        self.logger.info(f"総手数料　　：{self.total_fees:,.2f} USDT")
+        self.logger.info(f"純利益　　　：{net_profit:,.2f} USDT ({net_profit_pct:.2f}%)")
         self.logger.info(f"総取引回数　：{len(self.trades)}回")
         self.logger.info(f"買い取引　　：{self.buy_count}回")
         self.logger.info(f"売り取引　　：{self.sell_count}回")
+        self.logger.info(f"平均手数料　：{self.total_fees/len(self.trades) if self.trades else 0:.4f} USDT/取引")
         self.logger.info(f"結果保存先　：{self.results_dir}")
         self.logger.info(f"━━━━━━━━━━━━━━━━━━━━━━━")
         
