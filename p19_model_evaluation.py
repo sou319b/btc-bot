@@ -13,6 +13,9 @@ from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 import seaborn as sns
 from ml_strategy_patterns import PredictionTargets
+import tensorflow as tf
+from sklearn.preprocessing import LabelEncoder
+from p19_model_training import preprocess_data
 
 class ModelEvaluator:
     def __init__(self, results_path: str = './results/training_results.json'):
@@ -38,11 +41,28 @@ class ModelEvaluator:
         
         # モデルの読み込み
         if config['model_type'] == 'lstm':
-            model = tf.keras.models.load_model(f"{base_path}_model")
+            model = tf.keras.models.load_model(f"{base_path}_model.keras")
         else:
             model = joblib.load(f"{base_path}_model.joblib")
         
         return model, config
+    
+    def get_target_columns(self, df: pd.DataFrame, target: str) -> np.ndarray:
+        """One-Hotエンコーディング後のターゲット変数を取得"""
+        target_cols = [col for col in df.columns if col.startswith(f"{target}_")]
+        if target_cols:
+            return np.argmax(df[target_cols].values, axis=1)
+        elif target in df.columns:
+            return df[target].values
+        else:
+            raise ValueError(f"予測対象 {target} が見つかりません")
+    
+    def prepare_sequence_data(self, X: np.ndarray, sequence_length: int = 10) -> np.ndarray:
+        """LSTMのための時系列データ準備"""
+        X_seq = []
+        for i in range(len(X) - sequence_length):
+            X_seq.append(X[i:(i + sequence_length)])
+        return np.array(X_seq)
     
     def evaluate_classification_models(self, df: pd.DataFrame) -> Dict:
         """分類モデルの評価"""
@@ -50,27 +70,38 @@ class ModelEvaluator:
         
         for model_name, result in self.results.items():
             if result['metrics'].get('accuracy') is not None:  # 分類モデルの場合
-                model, config = self.load_model(model_name)
-                
-                # 特徴量とターゲットの準備
-                X = df[config['features']].values
-                y = df[config['prediction_target']].values
-                
-                # スケーラーの読み込みと適用
-                feature_scaler = joblib.load(f"{self.models_path}/{model_name}_feature_scaler.joblib")
-                X = feature_scaler.transform(X)
-                
-                # 予測
-                y_pred = model.predict(X)
-                
-                # 評価指標の計算
-                metrics = {
-                    'confusion_matrix': confusion_matrix(y, y_pred).tolist(),
-                    'classification_report': classification_report(y, y_pred, output_dict=True),
-                    'feature_importance': self.get_feature_importance(model, config['features'])
-                }
-                
-                classification_metrics[model_name] = metrics
+                try:
+                    model, config = self.load_model(model_name)
+                    
+                    # 特徴量とターゲットの準備
+                    X = df[config['features']].values
+                    y = self.get_target_columns(df, config['prediction_target'])
+                    
+                    # スケーラーの読み込みと適用
+                    feature_scaler = joblib.load(f"{self.models_path}/{model_name}_feature_scaler.joblib")
+                    X = feature_scaler.transform(X)
+                    
+                    # LSTMの場合、シーケンスデータを準備
+                    if config['model_type'] == 'lstm':
+                        X = self.prepare_sequence_data(X)
+                        y = y[10:]  # シーケンス長分のターゲットをスキップ
+                    
+                    # 予測
+                    y_pred = model.predict(X)
+                    if config['model_type'] == 'lstm':
+                        y_pred = (y_pred > 0.5).astype(int)
+                    
+                    # 評価指標の計算
+                    metrics = {
+                        'confusion_matrix': confusion_matrix(y, y_pred).tolist(),
+                        'classification_report': classification_report(y, y_pred, output_dict=True),
+                        'feature_importance': self.get_feature_importance(model, config['features'])
+                    }
+                    
+                    classification_metrics[model_name] = metrics
+                except Exception as e:
+                    print(f"モデル {model_name} の評価中にエラーが発生しました: {str(e)}")
+                    continue
         
         return classification_metrics
     
@@ -80,33 +111,42 @@ class ModelEvaluator:
         
         for model_name, result in self.results.items():
             if result['metrics'].get('mse') is not None:  # 回帰モデルの場合
-                model, config = self.load_model(model_name)
-                
-                # 特徴量とターゲットの準備
-                X = df[config['features']].values
-                y = df[config['prediction_target']].values
-                
-                # スケーラーの読み込みと適用
-                feature_scaler = joblib.load(f"{self.models_path}/{model_name}_feature_scaler.joblib")
-                target_scaler = joblib.load(f"{self.models_path}/{model_name}_target_scaler.joblib")
-                
-                X = feature_scaler.transform(X)
-                
-                # 予測
-                y_pred = model.predict(X)
-                
-                # スケーリング逆変換
-                y = target_scaler.inverse_transform(y.reshape(-1, 1)).ravel()
-                y_pred = target_scaler.inverse_transform(y_pred.reshape(-1, 1)).ravel()
-                
-                # 評価指標の計算
-                metrics = {
-                    'prediction_vs_actual': list(zip(y.tolist(), y_pred.tolist())),
-                    'residuals': (y - y_pred).tolist(),
-                    'feature_importance': self.get_feature_importance(model, config['features'])
-                }
-                
-                regression_metrics[model_name] = metrics
+                try:
+                    model, config = self.load_model(model_name)
+                    
+                    # 特徴量とターゲットの準備
+                    X = df[config['features']].values
+                    y = df[config['prediction_target']].values
+                    
+                    # スケーラーの読み込みと適用
+                    feature_scaler = joblib.load(f"{self.models_path}/{model_name}_feature_scaler.joblib")
+                    target_scaler = joblib.load(f"{self.models_path}/{model_name}_target_scaler.joblib")
+                    
+                    X = feature_scaler.transform(X)
+                    
+                    # LSTMの場合、シーケンスデータを準備
+                    if config['model_type'] == 'lstm':
+                        X = self.prepare_sequence_data(X)
+                        y = y[10:]  # シーケンス長分のターゲットをスキップ
+                    
+                    # 予測
+                    y_pred = model.predict(X)
+                    
+                    # スケーリング逆変換
+                    y = target_scaler.inverse_transform(y.reshape(-1, 1)).ravel()
+                    y_pred = target_scaler.inverse_transform(y_pred.reshape(-1, 1)).ravel()
+                    
+                    # 評価指標の計算
+                    metrics = {
+                        'prediction_vs_actual': list(zip(y.tolist(), y_pred.tolist())),
+                        'residuals': (y - y_pred).tolist(),
+                        'feature_importance': self.get_feature_importance(model, config['features'])
+                    }
+                    
+                    regression_metrics[model_name] = metrics
+                except Exception as e:
+                    print(f"モデル {model_name} の評価中にエラーが発生しました: {str(e)}")
+                    continue
         
         return regression_metrics
     
@@ -227,6 +267,9 @@ class ModelEvaluator:
 def main():
     # データの読み込み
     df = pd.read_csv('./data/features_20250217.csv')
+    
+    # データの前処理
+    df = preprocess_data(df)
     
     # モデル評価
     evaluator = ModelEvaluator()
