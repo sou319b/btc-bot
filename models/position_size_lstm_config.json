@@ -1,0 +1,35 @@
+{
+    "name": "position_size_lstm",
+    "prediction_target": "optimal_position",
+    "features": [
+        "rsi_14",
+        "bb_upper",
+        "bb_middle",
+        "bb_lower",
+        "ma_5",
+        "ma_13",
+        "ma_21",
+        "volatility",
+        "macd",
+        "macd_signal",
+        "macd_hist",
+        "stoch_k",
+        "stoch_d",
+        "adx",
+        "cci",
+        "obv",
+        "atr",
+        "body_size",
+        "upper_shadow",
+        "lower_shadow",
+        "price_momentum",
+        "volume_momentum",
+        "price_acceleration",
+        "trend_strength"
+    ],
+    "model_type": "lstm",
+    "time_frame": 5,
+    "preprocessing": {
+        "scaler": "minmax"
+    }
+}

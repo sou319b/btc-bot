@@ -1,0 +1,19 @@
+{
+    "name": "basic_direction_rf",
+    "prediction_target": "price_direction",
+    "features": [
+        "rsi_14",
+        "bb_upper",
+        "bb_middle",
+        "bb_lower",
+        "ma_5",
+        "ma_13",
+        "ma_21",
+        "volatility"
+    ],
+    "model_type": "random_forest_classifier",
+    "time_frame": 5,
+    "preprocessing": {
+        "scaler": "standard"
+    }
+}

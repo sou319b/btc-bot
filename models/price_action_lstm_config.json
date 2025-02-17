@@ -1,0 +1,18 @@
+{
+    "name": "price_action_lstm",
+    "prediction_target": "next_price",
+    "features": [
+        "body_size",
+        "upper_shadow",
+        "lower_shadow",
+        "price_momentum",
+        "volume_momentum",
+        "price_acceleration",
+        "trend_strength"
+    ],
+    "model_type": "lstm",
+    "time_frame": 1,
+    "preprocessing": {
+        "scaler": "minmax"
+    }
+}

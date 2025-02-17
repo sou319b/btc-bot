@@ -1,0 +1,28 @@
+{
+    "name": "advanced_trend_xgb",
+    "prediction_target": "trend_strength",
+    "features": [
+        "rsi_14",
+        "bb_upper",
+        "bb_middle",
+        "bb_lower",
+        "ma_5",
+        "ma_13",
+        "ma_21",
+        "volatility",
+        "macd",
+        "macd_signal",
+        "macd_hist",
+        "stoch_k",
+        "stoch_d",
+        "adx",
+        "cci",
+        "obv",
+        "atr"
+    ],
+    "model_type": "xgboost_classifier",
+    "time_frame": 15,
+    "preprocessing": {
+        "scaler": "standard"
+    }
+}
