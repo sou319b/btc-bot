@@ -14,6 +14,7 @@ import json
 from typing import List, Dict
 import matplotlib.pyplot as plt
 from scipy import stats
+import seaborn as sns  # seabornを直接インポート
 
 class BackTester:
     def __init__(self):
@@ -21,7 +22,7 @@ class BackTester:
         self.setup_logging()
         
         # バックテストの設定
-        self.initial_balance = 1000  # 初期USDT残高
+        self.initial_balance = 100  # 初期USDT残高
         self.current_balance = self.initial_balance
         self.btc_balance = 0
         self.entry_price = None
@@ -308,19 +309,16 @@ class BackTester:
 
     def plot_results(self, results_df: pd.DataFrame):
         """バックテスト結果のグラフを生成"""
-        plt.style.use('default')  # seabornの代わりにデフォルトスタイルを使用
-        
-        # フォントの設定
+        # プロットのスタイル設定
+        sns.set_style("whitegrid")
         plt.rcParams['font.family'] = 'MS Gothic'  # 日本語フォントの設定
         
         # 資産推移のプロット
         plt.figure(figsize=(12, 6))
-        plt.plot(results_df['timestamp'], results_df['total_assets'], label='総資産')
+        sns.lineplot(data=results_df, x='timestamp', y='total_assets', label='総資産')
         plt.title('資産推移')
         plt.xlabel('日時')
         plt.ylabel('USDT')
-        plt.legend()
-        plt.grid(True)
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig(os.path.join(self.results_dir, 'equity_curve.png'))
@@ -328,22 +326,20 @@ class BackTester:
 
         # 価格とトレンドスコアの関係
         plt.figure(figsize=(12, 6))
-        plt.scatter(results_df['price'], results_df['trend_score'], alpha=0.5)
+        sns.scatterplot(data=results_df, x='price', y='trend_score', alpha=0.5)
         plt.title('価格とトレンドスコアの関係')
         plt.xlabel('価格')
         plt.ylabel('トレンドスコア')
-        plt.grid(True)
         plt.tight_layout()
         plt.savefig(os.path.join(self.results_dir, 'price_trend_correlation.png'))
         plt.close()
 
         # ボラティリティの分布
         plt.figure(figsize=(12, 6))
-        plt.hist(results_df['volatility'], bins=50)
+        sns.histplot(data=results_df, x='volatility', bins=50)
         plt.title('ボラティリティの分布')
         plt.xlabel('ボラティリティ')
         plt.ylabel('頻度')
-        plt.grid(True)
         plt.tight_layout()
         plt.savefig(os.path.join(self.results_dir, 'volatility_distribution.png'))
         plt.close()

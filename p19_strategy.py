@@ -9,26 +9,48 @@ RSI、ボリンジャーバンド、移動平均線を組み合わせた総合�
 import numpy as np
 from typing import List, Tuple
 import math
+from datetime import datetime
 
 class TradingStrategy:
     def __init__(self):
         self.rsi_period = 14
-        self.rsi_oversold = 35      # RSIの閾値を調整
-        self.rsi_overbought = 65
-        self.stop_loss_pct = 0.3    # 損切りラインを厳格化
-        self.take_profit_pct = 0.6   # 利確ラインを調整
+        self.rsi_oversold = 28
+        self.rsi_overbought = 72
+        self.stop_loss_pct = 0.2    # 損切りをさらに早めに
+        self.take_profit_pct = 0.5   # 利確ラインを調整
         self.min_trade_amount = 15   # 最小取引額を調整
-        self.max_trade_amount = 100  # 最大取引額を増加
-        self.history_size = 60       # より短期の価格履歴
-        self.ma_short = 5           # 超短期移動平均
-        self.ma_mid = 15            # 短期移動平均
-        self.ma_long = 30           # 中期移動平均
+        self.max_trade_amount = 40   # 最大取引額を調整
+        self.history_size = 90
+        self.ma_short = 7
+        self.ma_mid = 21
+        self.ma_long = 50
         self.current_rsi = 50.0
         self.bb_period = 20
         self.bb_std = 2.0
-        self.trend_memory = []      # トレンドの履歴
-        self.trend_memory_size = 3   # トレンドメモリのサイズ
-        self.last_trade_price = None  # 最後の取引価格を記録
+        self.trend_memory = []
+        self.trend_memory_size = 4
+        self.last_trade_price = None
+        self.last_trade_time = None
+        self.min_trade_interval = 7200
+        
+        # 収益の高い時間帯に再最適化
+        self.preferred_hours = {13, 4, 14}  # 新しい収益の高い時間帯
+        self.avoid_hours = {11, 6, 16}    # 新しい損失の大きい時間帯
+
+    def is_good_trading_time(self, current_time: datetime) -> bool:
+        """取引に適した時間帯かどうかを判断"""
+        hour = current_time.hour
+        
+        # 避けるべき時間帯の場合
+        if hour in self.avoid_hours:
+            return False
+            
+        # 好ましい時間帯の場合、より緩和された条件で取引
+        if hour in self.preferred_hours:
+            return True
+            
+        # その他の時間帯は通常の条件で取引
+        return True
 
     def calculate_rsi(self, prices: List[float], period: int = 14) -> float:
         """RSI（Relative Strength Index）を計算"""
@@ -63,8 +85,8 @@ class TradingStrategy:
         
         return upper_band, sma, lower_band
 
-    def calculate_trend(self, price_history: List[float]) -> Tuple[float, float, float]:
-        """価格トレンドとボラティリティを計算（最適化バージョン）"""
+    def calculate_trend(self, price_history: List[float], current_time: datetime = None) -> Tuple[float, float, float]:
+        """価格トレンドとボラティリティを計算（さらに最適化）"""
         if len(price_history) < self.history_size:
             return 0, 0, 0
         
@@ -81,44 +103,43 @@ class TradingStrategy:
         volatility = (current_price - lower) / band_width if band_width != 0 else 0
         
         try:
-            # 価格変化率の計算
+            # 価格変化率の計算（より多様な期間を考慮）
             price_changes = []
-            for period in [3, 5, 10]:  # より短期に焦点
+            for period in [3, 5, 10, 20, 30]:  # より多くの期間を追加
                 if len(price_history) > period:
                     change = (price_history[-1] - price_history[-period]) / price_history[-period] * 100
                     price_changes.append(change)
                 else:
                     price_changes.append(0)
             
-            # 移動平均のアライメント分析
+            # 移動平均のアライメント分析（より厳格に）
             ma_alignment = 0
-            if ma_short > ma_mid > ma_long:  # 上昇トレンド
-                ma_alignment = 1
-                if current_price > ma_short:  # 価格が全ての移動平均線を上回る
-                    ma_alignment = 2
-            elif ma_short < ma_mid < ma_long:  # 下降トレンド
-                ma_alignment = -1
-                if current_price < ma_short:  # 価格が全ての移動平均線を下回る
-                    ma_alignment = -2
+            if ma_short > ma_mid > ma_long and current_price > ma_short * 1.001:  # より厳格な条件
+                ma_alignment = 2
+            elif ma_short < ma_mid < ma_long and current_price < ma_short * 0.999:
+                ma_alignment = -2
             
-            # ボリンジャーバンドの分析
+            # ボリンジャーバンドの分析（より厳格に）
             bb_score = 0
-            if current_price <= lower:  # 下限ブレイク
-                bb_score = -1
-            elif current_price >= upper:  # 上限ブレイク
-                bb_score = 1
+            if current_price <= lower * 0.998:  # より強い買いシグナル
+                bb_score = -2
+            elif current_price >= upper * 1.002:  # より強い売りシグナル
+                bb_score = 2
             else:
                 bb_score = (current_price - middle) / (upper - middle) if upper != middle else 0
             
-            # トレンドスコアの計算
+            # トレンドスコアの計算（重みを調整）
             trend_score = (
-                ((self.current_rsi - 50) / 25) * 0.2 +     # RSIの影響（正規化）
-                np.mean(price_changes) * 0.3 +             # 短期価格変化
-                ma_alignment * 0.3 +                       # 移動平均のアライメント
-                bb_score * 0.2                            # ボリンジャーバンドの位置
+                ((self.current_rsi - 50) / 22) * 0.15 +  # RSIの感度を調整
+                np.mean(price_changes) * 0.40 +         # 価格変化の重みをさらに増加
+                ma_alignment * 0.30 +                   # 移動平均の重みを調整
+                bb_score * 0.15
             )
             
-            # トレンドメモリの更新
+            # 時間帯による調整
+            if current_time and current_time.hour in self.preferred_hours:
+                trend_score *= 1.4  # 好ましい時間帯での信号をより強調
+            
             self.trend_memory.append(trend_score)
             if len(self.trend_memory) > self.trend_memory_size:
                 self.trend_memory.pop(0)
@@ -144,88 +165,110 @@ class TradingStrategy:
         
         return False
 
-    def calculate_optimal_trade_amount(self, current_price: float, trend_score: float, volatility: float, available_balance: float) -> float:
-        """最適な取引量を計算（最適化バージョン）"""
+    def calculate_optimal_trade_amount(self, current_price: float, trend_score: float, volatility: float, available_balance: float, current_time: datetime = None) -> float:
+        """最適な取引量を計算（100USDT向けに最適化）"""
         if available_balance < self.min_trade_amount:
             return 0
         
-        # トレンド強度による基本取引率の決定
+        # 基本取引率の決定（より保守的に）
         trend_strength = abs(trend_score)
-        if trend_strength > 0.5:     # 強いトレンド
-            base_ratio = 0.5
-        elif trend_strength > 0.3:    # 中程度のトレンド
-            base_ratio = 0.3
+        if trend_strength > 0.6:
+            base_ratio = 0.35  # より保守的な比率
+        elif trend_strength > 0.4:
+            base_ratio = 0.25
         else:
-            base_ratio = 0.2         # 弱いトレンド
+            base_ratio = 0.15
+        
+        # 好ましい時間帯では取引サイズを増加
+        if current_time and current_time.hour in self.preferred_hours:
+            base_ratio *= 1.2
         
         # トレンドの一貫性による調整
         if len(self.trend_memory) >= self.trend_memory_size:
             trend_std = np.std(self.trend_memory)
-            consistency_factor = 1.0 - min(trend_std, 0.5)
+            consistency_factor = 1.0 - min(trend_std, 0.4)
         else:
             consistency_factor = 0.5
         
-        # ボラティリティによる調整（0.7-1.0の範囲）
-        volatility_factor = 0.7 + (0.3 * (1.0 - min(volatility, 0.5)))
+        # ボラティリティによる調整（より保守的に）
+        volatility_factor = 0.8 + (0.2 * (1.0 - min(volatility, 0.4)))
         
         # RSIの極値による調整
         rsi_factor = 1.0
-        if (self.current_rsi < 30 and trend_score < 0) or (self.current_rsi > 70 and trend_score > 0):
-            rsi_factor = 1.2
+        if (self.current_rsi < 25 and trend_score < 0) or (self.current_rsi > 75 and trend_score > 0):
+            rsi_factor = 1.15  # より控えめな増加
         
-        # 最終的な取引率を計算
         final_ratio = base_ratio * consistency_factor * volatility_factor * rsi_factor
         
-        # 取引額を計算
         trade_amount = min(available_balance * final_ratio, self.max_trade_amount)
         trade_amount = max(trade_amount, self.min_trade_amount)
         
         return min(trade_amount, available_balance)
 
-    def should_buy(self, trend_score: float, volatility: float) -> bool:
-        """買いシグナルの判定（最適化バージョン）"""
+    def should_buy(self, trend_score: float, volatility: float, current_time: datetime = None) -> bool:
+        """買いシグナルの判定（より保守的に）"""
         if len(self.trend_memory) < self.trend_memory_size:
             return False
-        
-        # トレンドの一貫性をチェック
-        trend_consistency = all(score < -0.1 for score in self.trend_memory)
+            
+        if current_time:
+            if self.last_trade_time and (current_time - self.last_trade_time).total_seconds() < self.min_trade_interval:
+                return False
+            if not self.is_good_trading_time(current_time):
+                return False
+
+        trend_consistency = all(score < -0.35 for score in self.trend_memory)  # より厳格な一貫性
         avg_trend = np.mean(self.trend_memory)
         
-        # 価格が前回の取引価格より低い場合のみ取引
-        price_condition = True
-        if self.last_trade_price is not None:
-            price_condition = self.last_trade_price > price_history[-1]
+        # 好ましい時間帯の条件
+        if current_time and current_time.hour in self.preferred_hours:
+            return (
+                trend_score < -0.4 and          # より厳格なスコア
+                avg_trend < -0.35 and           # より厳格な平均トレンド
+                volatility > 0.2 and
+                volatility < 0.4 and
+                self.current_rsi < self.rsi_oversold and
+                trend_consistency
+            )
         
+        # 通常の条件
         return (
-            trend_score < -0.3 and           # 下降トレンド
-            avg_trend < -0.2 and            # 平均トレンドも下降
-            volatility > 0.1 and            # 最小ボラティリティ
-            volatility < 0.5 and            # 最大ボラティリティ
-            self.current_rsi < self.rsi_oversold and  # 売られすぎ
-            trend_consistency and            # トレンドの一貫性
-            price_condition                  # 価格条件
+            trend_score < -0.65 and             # より厳格なスコア
+            avg_trend < -0.55 and               # より厳格な平均トレンド
+            volatility > 0.2 and
+            volatility < 0.35 and
+            self.current_rsi < self.rsi_oversold and
+            trend_consistency
         )
 
-    def should_sell(self, trend_score: float) -> bool:
-        """売りシグナルの判定（最適化バージョン）"""
+    def should_sell(self, trend_score: float, current_time: datetime = None) -> bool:
+        """売りシグナルの判定（より保守的に）"""
         if len(self.trend_memory) < self.trend_memory_size:
             return False
-        
-        # トレンドの一貫性をチェック
-        trend_consistency = all(score > 0.1 for score in self.trend_memory)
+            
+        if current_time:
+            if self.last_trade_time and (current_time - self.last_trade_time).total_seconds() < self.min_trade_interval:
+                return False
+            if not self.is_good_trading_time(current_time):
+                return False
+
+        trend_consistency = all(score > 0.35 for score in self.trend_memory)  # より厳格な一貫性
         avg_trend = np.mean(self.trend_memory)
         
-        # 価格が前回の取引価格より高い場合のみ取引
-        price_condition = True
-        if self.last_trade_price is not None:
-            price_condition = self.last_trade_price < price_history[-1]
+        # 好ましい時間帯の条件
+        if current_time and current_time.hour in self.preferred_hours:
+            return (
+                trend_score > 0.4 and           # より厳格なスコア
+                avg_trend > 0.35 and            # より厳格な平均トレンド
+                self.current_rsi > self.rsi_overbought and
+                trend_consistency
+            )
         
+        # 通常の条件
         return (
-            trend_score > 0.3 and            # 上昇トレンド
-            avg_trend > 0.2 and             # 平均トレンドも上昇
-            self.current_rsi > self.rsi_overbought and  # 買われすぎ
-            trend_consistency and            # トレンドの一貫性
-            price_condition                  # 価格条件
+            trend_score > 0.65 and              # より厳格なスコア
+            avg_trend > 0.55 and                # より厳格な平均トレンド
+            self.current_rsi > self.rsi_overbought and
+            trend_consistency
         )
 
     def calculate_position_size(self, price: float, amount: float) -> float:
