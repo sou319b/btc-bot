@@ -8,3 +8,6 @@ plotly
 openai
 pybit
 seaborn
+xgboost
+tensorflow
+pandas-ta
