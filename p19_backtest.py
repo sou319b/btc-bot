@@ -11,6 +11,9 @@ import pandas as pd
 import numpy as np
 from p19_strategy import TradingStrategy
 import json
+from typing import List, Dict
+import matplotlib.pyplot as plt
+from scipy import stats
 
 class BackTester:
     def __init__(self):
@@ -200,6 +203,151 @@ class BackTester:
         self.logger.info("シミュレーション完了")
         return pd.DataFrame(results)
 
+    def analyze_trades(self, trades: List[Dict], results_df: pd.DataFrame) -> Dict:
+        """取引の詳細分析を実行"""
+        if not trades:
+            return {}
+
+        trades_df = pd.DataFrame(trades)
+        trades_df['timestamp'] = pd.to_datetime(trades_df['timestamp'])
+        trades_df['hour'] = trades_df['timestamp'].dt.hour
+
+        # 利益/損失の分布分析
+        profitable_trades = trades_df[trades_df['type'] == 'SELL']
+        profits = profitable_trades['profit'].values
+        profit_trades = len(profits[profits > 0])
+        loss_trades = len(profits[profits <= 0])
+
+        # 最大の利益/損失取引
+        max_profit_trade = profitable_trades.loc[profitable_trades['profit'].idxmax()] if not profitable_trades.empty else None
+        max_loss_trade = profitable_trades.loc[profitable_trades['profit'].idxmin()] if not profitable_trades.empty else None
+
+        # 連続損失の分析
+        consecutive_losses = 0
+        max_consecutive_losses = 0
+        current_streak = 0
+
+        for profit in profits:
+            if profit < 0:
+                current_streak += 1
+                max_consecutive_losses = max(max_consecutive_losses, current_streak)
+            else:
+                current_streak = 0
+
+        # 保有時間の分析
+        holding_times = []
+        entry_time = None
+        for _, trade in trades_df.iterrows():
+            if trade['type'] == 'BUY':
+                entry_time = trade['timestamp']
+            elif trade['type'] == 'SELL' and entry_time is not None:
+                holding_time = (trade['timestamp'] - entry_time).total_seconds() / 3600  # 時間単位
+                holding_times.append(holding_time)
+                entry_time = None
+
+        # 時間帯分析
+        hourly_trades = trades_df.groupby('hour').size()
+        hourly_profits = profitable_trades.groupby('hour')['profit'].mean()
+
+        # 取引サイズの分析
+        trade_sizes = trades_df[trades_df['type'] == 'BUY']['amount']
+        profitable_sizes = profitable_trades[profitable_trades['profit'] > 0]['amount']
+        loss_sizes = profitable_trades[profitable_trades['profit'] <= 0]['amount']
+
+        # リスク管理指標の計算
+        equity_curve = results_df['total_assets']
+        peak = equity_curve.expanding().max()
+        drawdown = (equity_curve - peak) / peak * 100
+        max_drawdown = drawdown.min()
+
+        # リターンの計算
+        returns = equity_curve.pct_change().dropna()
+        risk_free_rate = 0.02  # 2%と仮定
+        excess_returns = returns - risk_free_rate/252
+        sharpe_ratio = np.sqrt(252) * (excess_returns.mean() / excess_returns.std()) if excess_returns.std() != 0 else 0
+
+        # 損益比率
+        avg_profit = profits[profits > 0].mean() if len(profits[profits > 0]) > 0 else 0
+        avg_loss = abs(profits[profits < 0].mean()) if len(profits[profits < 0]) > 0 else 1
+        profit_loss_ratio = avg_profit / avg_loss if avg_loss != 0 else 0
+
+        analysis_results = {
+            "取引の詳細分析": {
+                "総取引数": len(trades),
+                "勝率": (profit_trades / (profit_trades + loss_trades) * 100) if (profit_trades + loss_trades) > 0 else 0,
+                "最大利益": {
+                    "金額": float(max_profit_trade['profit']) if max_profit_trade is not None else 0,
+                    "日時": str(max_profit_trade['timestamp']) if max_profit_trade is not None else None
+                },
+                "最大損失": {
+                    "金額": float(max_loss_trade['profit']) if max_loss_trade is not None else 0,
+                    "日時": str(max_loss_trade['timestamp']) if max_loss_trade is not None else None
+                },
+                "連続損失の最大回数": max_consecutive_losses,
+                "平均保有時間": np.mean(holding_times) if holding_times else 0,
+                "保有時間の中央値": np.median(holding_times) if holding_times else 0
+            },
+            "時間帯分析": {
+                "取引が多い時間帯": hourly_trades.nlargest(3).to_dict(),
+                "収益が高い時間帯": hourly_profits.nlargest(3).to_dict(),
+                "損失が大きい時間帯": hourly_profits.nsmallest(3).to_dict()
+            },
+            "取引サイズ分析": {
+                "平均取引サイズ": float(trade_sizes.mean()) if not trade_sizes.empty else 0,
+                "収益取引の平均サイズ": float(profitable_sizes.mean()) if not profitable_sizes.empty else 0,
+                "損失取引の平均サイズ": float(loss_sizes.mean()) if not loss_sizes.empty else 0
+            },
+            "リスク管理指標": {
+                "最大ドローダウン": float(max_drawdown),
+                "シャープレシオ": float(sharpe_ratio),
+                "損益比率": float(profit_loss_ratio)
+            }
+        }
+
+        return analysis_results
+
+    def plot_results(self, results_df: pd.DataFrame):
+        """バックテスト結果のグラフを生成"""
+        plt.style.use('default')  # seabornの代わりにデフォルトスタイルを使用
+        
+        # フォントの設定
+        plt.rcParams['font.family'] = 'MS Gothic'  # 日本語フォントの設定
+        
+        # 資産推移のプロット
+        plt.figure(figsize=(12, 6))
+        plt.plot(results_df['timestamp'], results_df['total_assets'], label='総資産')
+        plt.title('資産推移')
+        plt.xlabel('日時')
+        plt.ylabel('USDT')
+        plt.legend()
+        plt.grid(True)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.results_dir, 'equity_curve.png'))
+        plt.close()
+
+        # 価格とトレンドスコアの関係
+        plt.figure(figsize=(12, 6))
+        plt.scatter(results_df['price'], results_df['trend_score'], alpha=0.5)
+        plt.title('価格とトレンドスコアの関係')
+        plt.xlabel('価格')
+        plt.ylabel('トレンドスコア')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.results_dir, 'price_trend_correlation.png'))
+        plt.close()
+
+        # ボラティリティの分布
+        plt.figure(figsize=(12, 6))
+        plt.hist(results_df['volatility'], bins=50)
+        plt.title('ボラティリティの分布')
+        plt.xlabel('ボラティリティ')
+        plt.ylabel('頻度')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.results_dir, 'volatility_distribution.png'))
+        plt.close()
+
     def save_results(self, results_df):
         """バックテスト結果を保存"""
         # 結果をCSVファイルに保存
@@ -210,6 +358,12 @@ class BackTester:
         trades_filename = os.path.join(self.results_dir, "trades.json")
         with open(trades_filename, 'w', encoding='utf-8') as f:
             json.dump(self.trades, f, indent=2, default=str)
+        
+        # 詳細な分析を実行
+        analysis_results = self.analyze_trades(self.trades, results_df)
+        
+        # グラフを生成
+        self.plot_results(results_df)
         
         # 最終結果を計算
         final_total = results_df['total_assets'].iloc[-1]
@@ -229,13 +383,14 @@ class BackTester:
             'total_trades': len(self.trades),
             'buy_count': self.buy_count,
             'sell_count': self.sell_count,
-            'average_fee_per_trade': self.total_fees / len(self.trades) if self.trades else 0
+            'average_fee_per_trade': self.total_fees / len(self.trades) if self.trades else 0,
+            'detailed_analysis': analysis_results
         }
         
         # サマリーをJSONファイルに保存
         summary_filename = os.path.join(self.results_dir, "summary.json")
         with open(summary_filename, 'w', encoding='utf-8') as f:
-            json.dump(summary, f, indent=2)
+            json.dump(summary, f, indent=2, ensure_ascii=False)
         
         self.logger.info(f"\n━━━━━━━━━━ バックテスト結果 ━━━━━━━━━━")
         self.logger.info(f"初期残高　　：{self.initial_balance:,.2f} USDT")
@@ -247,6 +402,10 @@ class BackTester:
         self.logger.info(f"買い取引　　：{self.buy_count}回")
         self.logger.info(f"売り取引　　：{self.sell_count}回")
         self.logger.info(f"平均手数料　：{self.total_fees/len(self.trades) if self.trades else 0:.4f} USDT/取引")
+        self.logger.info(f"勝率　　　　：{analysis_results['取引の詳細分析']['勝率']:.2f}%")
+        self.logger.info(f"損益比率　　：{analysis_results['リスク管理指標']['損益比率']:.2f}")
+        self.logger.info(f"最大ドローダウン：{abs(analysis_results['リスク管理指標']['最大ドローダウン']):.2f}%")
+        self.logger.info(f"シャープレシオ：{analysis_results['リスク管理指標']['シャープレシオ']:.2f}")
         self.logger.info(f"結果保存先　：{self.results_dir}")
         self.logger.info(f"━━━━━━━━━━━━━━━━━━━━━━━")
         

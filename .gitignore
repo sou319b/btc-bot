@@ -1,3 +1,6 @@
 venv
 .env
 *.log
+results/
+__pycache__/
+*.pyc
