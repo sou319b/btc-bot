@@ -1,14 +1,18 @@
 """
-価格データ取得スクリプト（改良版）
-OHLCV（始値、高値、安値、終値、取引量）データを取得
+価格データおよび追加市場データ取得スクリプト（拡張版）
+OHLCV（始値、高値、安値、終値、取引量）データに加え、
+追加の市場データ（オーダーブック、取引指標など）を取得
 """
 
 import os
 import logging
 from datetime import datetime, timedelta
 import pandas as pd
+import numpy as np
 from pybit.unified_trading import HTTP
 import time
+import ta
+import requests
 
 def setup_logging():
     """ロギングの設定"""
@@ -24,8 +28,74 @@ def setup_logging():
     )
     return logging.getLogger(__name__)
 
+def calculate_technical_indicators(df):
+    """テクニカル指標の計算"""
+    # RSI
+    df['rsi'] = ta.momentum.RSIIndicator(df['close']).rsi()
+    
+    # ボリンジャーバンド
+    bollinger = ta.volatility.BollingerBands(df['close'])
+    df['bollinger_high'] = bollinger.bollinger_hband()
+    df['bollinger_low'] = bollinger.bollinger_lband()
+    
+    # MACD
+    macd = ta.trend.MACD(df['close'])
+    df['macd'] = macd.macd()
+    df['macd_signal'] = macd.macd_signal()
+    
+    # ATR
+    df['atr'] = ta.volatility.AverageTrueRange(df['high'], df['low'], df['close']).average_true_range()
+    
+    return df
+
+def get_orderbook_data(session, symbol):
+    """オーダーブックデータの取得"""
+    try:
+        orderbook = session.get_orderbook(
+            category="spot",
+            symbol=symbol,
+            limit=50
+        )
+        
+        if 'result' in orderbook:
+            bids = orderbook['result']['b']
+            asks = orderbook['result']['a']
+            
+            # オーダーブックインバランスの計算
+            bid_volume = sum(float(bid[1]) for bid in bids)
+            ask_volume = sum(float(ask[1]) for ask in asks)
+            imbalance = (bid_volume - ask_volume) / (bid_volume + ask_volume)
+            
+            # スプレッドの計算
+            best_bid = float(bids[0][0])
+            best_ask = float(asks[0][0])
+            spread = (best_ask - best_bid) / best_bid
+            
+            return {
+                'orderbook_imbalance': imbalance,
+                'spread': spread,
+                'bid_depth': bid_volume,
+                'ask_depth': ask_volume
+            }
+    except Exception as e:
+        logging.error(f"オーダーブックデータの取得エラー: {e}")
+    
+    return None
+
+def get_fear_and_greed_index():
+    """Fear & Greed Indexの取得"""
+    try:
+        response = requests.get('https://api.alternative.me/fng/')
+        if response.status_code == 200:
+            data = response.json()
+            return int(data['data'][0]['value'])
+    except Exception as e:
+        logging.error(f"Fear & Greed Indexの取得エラー: {e}")
+    
+    return None
+
 def fetch_historical_data():
-    """過去1週間の1分足価格データを取得（OHLCV）"""
+    """拡張版データ取得関数"""
     logger = setup_logging()
     
     try:
@@ -101,6 +171,30 @@ def fetch_historical_data():
             if invalid_count > 0:
                 logger.warning(f"{col}列に{invalid_count}件の無効なデータが存在します")
         
+        # テクニカル指標の追加
+        price_data = calculate_technical_indicators(price_data)
+        
+        # 30分ごとにオーダーブックデータを取得
+        orderbook_data = []
+        current_time = price_data['timestamp'].min()
+        while current_time <= price_data['timestamp'].max():
+            ob_data = get_orderbook_data(session, "BTCUSDT")
+            if ob_data:
+                ob_data['timestamp'] = current_time
+                orderbook_data.append(ob_data)
+            current_time += timedelta(minutes=30)
+            time.sleep(0.1)
+        
+        # オーダーブックデータをメインのDataFrameとマージ
+        if orderbook_data:
+            ob_df = pd.DataFrame(orderbook_data)
+            price_data = pd.merge_asof(price_data, ob_df, on='timestamp')
+        
+        # Fear & Greed Indexの取得（日次データ）
+        fear_greed = get_fear_and_greed_index()
+        if fear_greed is not None:
+            price_data['fear_greed_index'] = fear_greed
+        
         # CSVファイルとして保存
         csv_filename = f"data/historical_data_{datetime.now().strftime('%Y%m%d')}.csv"
         price_data.to_csv(csv_filename, index=False)
@@ -109,6 +203,11 @@ def fetch_historical_data():
         logger.info(f"取得期間: {price_data['timestamp'].min()} から {price_data['timestamp'].max()}")
         logger.info(f"データ数: {len(price_data)}件")
         logger.info("\nカラム一覧:")
+        for col in price_data.columns:
+            logger.info(f"- {col}")
+        
+        logger.info("追加の市場データを含む拡張データセットを作成しました")
+        logger.info("\n新しいカラム一覧:")
         for col in price_data.columns:
             logger.info(f"- {col}")
         

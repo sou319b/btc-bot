@@ -23,6 +23,14 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from xgboost import XGBClassifier, XGBRegressor
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dropout, Dense
+import lightgbm as lgb
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+import logging
+from datetime import datetime
+import traceback
 
 class ModelTrainer:
     def __init__(self, df: pd.DataFrame, strategy: StrategyPattern):
@@ -348,6 +356,167 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+def setup_logging():
+    """ロギングの設定"""
+    os.makedirs("logs", exist_ok=True)
+    log_filename = f"logs/model_training_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filename, encoding='utf-8'),
+            logging.StreamHandler()
+        ]
+    )
+    return logging.getLogger(__name__)
+
+def load_preprocessed_data():
+    """前処理済みデータの読み込み"""
+    data_dir = "data"
+    data_files = [f for f in os.listdir(data_dir) if f.startswith("preprocessed_data_")]
+    if not data_files:
+        raise FileNotFoundError("前処理済みデータファイルが見つかりません")
+    
+    latest_file = max(data_files)
+    return pd.read_csv(os.path.join(data_dir, latest_file))
+
+def prepare_features_and_target(df, prediction_window=1):
+    """特徴量とターゲットの準備（改善版）"""
+    # 特徴量の選択
+    feature_columns = [
+        'open', 'high', 'low', 'close', 'volume',
+        'rsi', 'bollinger_high', 'bollinger_low',
+        'macd', 'macd_signal', 'atr',
+        'returns', 'momentum_1', 'momentum_5', 'momentum_10',
+        'volatility_5', 'volatility_10', 'trend_strength',
+        'price_range_ratio', 'body_ratio', 'relative_volume'
+    ]
+    
+    # NaNを含む行を削除
+    df = df.dropna()
+    
+    # ターゲットを整数型に変換
+    df['target'] = df['target'].map({1.0: 2, 0.5: 1, 0.0: 0}).astype(int)
+    
+    return df[feature_columns], df['target']
+
+def train_model():
+    """モデルのトレーニングメイン関数（改善版）"""
+    logger = setup_logging()
+    
+    try:
+        # データの読み込み
+        logger.info("前処理済みデータを読み込みます...")
+        df = load_preprocessed_data()
+        
+        # 特徴量とターゲットの準備
+        logger.info("特徴量とターゲットを準備します...")
+        X, y = prepare_features_and_target(df)
+        
+        # 時系列分割の設定
+        tscv = TimeSeriesSplit(n_splits=5)
+        
+        # モデルのパラメータ
+        params = {
+            'objective': 'multiclass',
+            'metric': 'multi_logloss',
+            'num_class': 3,
+            'boosting_type': 'gbdt',
+            'num_leaves': 31,
+            'learning_rate': 0.05,
+            'feature_fraction': 0.9,
+            'bagging_fraction': 0.8,
+            'bagging_freq': 5,
+            'verbose': -1
+        }
+        
+        # モデルの評価結果を保存
+        all_metrics = []
+        feature_importance_gain = np.zeros(len(X.columns))
+        
+        logger.info("モデルのトレーニングを開始します...")
+        
+        # 時系列交差検証
+        for fold, (train_idx, val_idx) in enumerate(tscv.split(X), 1):
+            X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
+            y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+            
+            # トレーニングデータセットの作成
+            train_data = lgb.Dataset(X_train, label=y_train)
+            val_data = lgb.Dataset(X_val, label=y_val, reference=train_data)
+            
+            # モデルのトレーニング
+            model = lgb.train(
+                params,
+                train_data,
+                num_boost_round=1000,
+                valid_sets=[train_data, val_data],
+                callbacks=[
+                    lgb.early_stopping(stopping_rounds=50),
+                    lgb.log_evaluation(period=100)
+                ]
+            )
+            
+            # 予測
+            y_pred = np.argmax(model.predict(X_val), axis=1)
+            
+            # 評価メトリクスの計算
+            report = classification_report(y_val, y_pred, output_dict=True)
+            all_metrics.append(report)
+            
+            # 特徴量重要度の累積
+            feature_importance_gain += model.feature_importance(importance_type='gain')
+            
+            logger.info(f"\nFold {fold} の結果:")
+            logger.info(f"Accuracy: {report['accuracy']:.4f}")
+            logger.info(f"Precision: {report['weighted avg']['precision']:.4f}")
+            logger.info(f"Recall: {report['weighted avg']['recall']:.4f}")
+            
+            # 混同行列の表示
+            cm = confusion_matrix(y_val, y_pred)
+            logger.info("\n混同行列:")
+            logger.info(cm)
+        
+        # 平均特徴量重要度の計算
+        feature_importance_gain /= fold
+        
+        # 結果の保存
+        os.makedirs("models", exist_ok=True)
+        model_path = f"models/model_{datetime.now().strftime('%Y%m%d')}.txt"
+        model.save_model(model_path)
+        
+        # 特徴量重要度の可視化と保存
+        plt.figure(figsize=(12, 6))
+        importance_df = pd.DataFrame({
+            'feature': X.columns,
+            'importance': feature_importance_gain
+        }).sort_values('importance', ascending=False)
+        
+        sns.barplot(x='importance', y='feature', data=importance_df)
+        plt.title('特徴量重要度（平均ゲイン）')
+        plt.tight_layout()
+        
+        os.makedirs("reports", exist_ok=True)
+        plt.savefig(f"reports/feature_importance_{datetime.now().strftime('%Y%m%d')}.png")
+        
+        # 評価メトリクスの平均を計算
+        avg_metrics = {
+            'accuracy': np.mean([m['accuracy'] for m in all_metrics]),
+            'precision': np.mean([m['weighted avg']['precision'] for m in all_metrics]),
+            'recall': np.mean([m['weighted avg']['recall'] for m in all_metrics])
+        }
+        
+        logger.info("\n平均評価メトリクス:")
+        for metric, value in avg_metrics.items():
+            logger.info(f"{metric}: {value:.4f}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"モデルトレーニング中にエラーが発生しました: {str(e)}")
+        logger.error(traceback.format_exc())
+        return False
+
 def main():
     print("機械学習モデルの学習を開始します...")
     
@@ -370,4 +539,4 @@ def main():
     print(f"\n学習完了: {successful_models}/{total_models} モデルが正常に学習されました")
 
 if __name__ == "__main__":
-    main() 
+    train_model() 
