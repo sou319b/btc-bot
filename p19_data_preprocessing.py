@@ -12,6 +12,7 @@ import os
 import logging
 from datetime import datetime
 import traceback
+import ta
 
 def setup_logging():
     """ロギングの設定"""
@@ -61,23 +62,42 @@ def remove_outliers(df, columns, n_std=3):
     return df
 
 def add_features(df):
-    """追加の特徴量を生成"""
-    # 価格変動率
-    df['returns'] = df['close'].pct_change()
+    """特徴量を追加する関数"""
+    # 安全な除算のためのヘルパー関数
+    def safe_divide(a, b):
+        return np.where(b != 0, a / b, 0)
     
-    # ボラティリティ（過去10分間）
-    df['volatility'] = df['returns'].rolling(window=10).std()
+    # 基本的な価格指標
+    df['price_range'] = df['high'] - df['low']
+    df['body_ratio'] = safe_divide(abs(df['close'] - df['open']), df['price_range'])
     
-    # 移動平均線
-    df['sma_5'] = df['close'].rolling(window=5).mean()
-    df['sma_10'] = df['close'].rolling(window=10).mean()
-    df['sma_20'] = df['close'].rolling(window=20).mean()
+    # トレンド指標
+    windows = [20, 50, 100]
+    for window in windows:
+        df[f'sma_{window}'] = df['close'].rolling(window=window).mean()
+        df[f'ema_{window}'] = df['close'].ewm(span=window, adjust=False).mean()
+        df[f'slope_{window}'] = safe_divide(df[f'sma_{window}'] - df[f'sma_{window}'].shift(window), window)
     
-    # 出来高加重平均価格（VWAP）
-    df['vwap'] = (df['volume'] * df['close']).cumsum() / df['volume'].cumsum()
+    # ボリューム分析
+    df['volume_sma_15'] = df['volume'].rolling(window=15).mean()
+    df['volume_ratio'] = safe_divide(df['volume'], df['volume_sma_15'])
     
-    # 価格モメンタム
-    df['momentum'] = df['close'] - df['close'].shift(5)
+    # モメンタム指標
+    for period in [15, 30]:
+        df[f'momentum_{period}'] = df['close'].diff(period)
+        df[f'roc_{period}'] = safe_divide(df['close'] - df['close'].shift(period), df['close'].shift(period)) * 100
+    
+    # ボラティリティ指標（ATRの手動計算）
+    window = 20
+    tr = pd.DataFrame()
+    tr['hl'] = df['high'] - df['low']
+    tr['hc'] = abs(df['high'] - df['close'].shift(1))
+    tr['lc'] = abs(df['low'] - df['close'].shift(1))
+    tr['tr'] = tr[['hl', 'hc', 'lc']].max(axis=1)
+    df['atr_20'] = tr['tr'].rolling(window=window).mean()
+    
+    # 欠損値を0で埋める
+    df = df.fillna(0)
     
     return df
 
@@ -87,143 +107,83 @@ def scale_features(df, feature_columns):
     df[feature_columns] = scaler.fit_transform(df[feature_columns])
     return df, scaler
 
-def preprocess_data():
-    """メイン処理関数（改善版）"""
+def preprocess_data(df):
+    """メイン処理関数（中頻度取引向け）"""
     logger = setup_logging()
     
     try:
-        # データの読み込み
         logger.info("データの読み込みを開始します...")
-        df = load_latest_data()
         
-        # タイムスタンプをdatetime型に変換
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df = df.sort_values('timestamp')
-        
-        # 基本的なデータクリーニング
-        logger.info("基本的なデータクリーニングを実行します...")
-        
-        # 異常値の除外（より厳密な基準）
-        df = df[df['close'] > 0]  # 負の価格を除外
-        df = df[df['volume'] > 0]  # 取引量が0以下のデータを除外
-        
-        # 極端な価格変動の除外
-        df['returns'] = df['close'].pct_change()
-        df = df[df['returns'].abs() < 0.05]  # 5%以上の価格変動を除外
-        
-        # 欠損値の処理（より洗練された方法）
-        logger.info("欠損値の処理を行います...")
-        
-        # 時系列データの特性を考慮した補完
-        for col in ['open', 'high', 'low', 'close', 'volume']:
-            # 線形補間を試みる
-            df[col] = df[col].interpolate(method='linear')
-            # それでも残る欠損値は前方補完
-            df[col] = df[col].fillna(method='ffill')
-            # 先頭の欠損値は後方補完
-            df[col] = df[col].fillna(method='bfill')
-        
-        # 特徴量エンジニアリング（改善版）
-        logger.info("特徴量エンジニアリングを実行します...")
-        
-        # 価格関連の特徴量
-        df['price_range'] = df['high'] - df['low']
-        df['price_range_ratio'] = df['price_range'] / df['close']
-        df['body_ratio'] = abs(df['close'] - df['open']) / df['price_range']
-        
-        # 移動平均線
-        df['sma_5'] = df['close'].rolling(window=5).mean()
-        df['sma_10'] = df['close'].rolling(window=10).mean()
-        df['sma_20'] = df['close'].rolling(window=20).mean()
-        
-        # ボリューム関連の特徴量
-        df['volume_ma5'] = df['volume'].rolling(window=5).mean()
-        df['volume_ma10'] = df['volume'].rolling(window=10).mean()
-        df['relative_volume'] = df['volume'] / df['volume_ma5']
-        
-        # モメンタム特徴量
-        df['momentum_1'] = df['close'].pct_change(1)
-        df['momentum_5'] = df['close'].pct_change(5)
-        df['momentum_10'] = df['close'].pct_change(10)
-        
-        # ボラティリティ特徴量
-        df['volatility_5'] = df['returns'].rolling(window=5).std()
-        df['volatility_10'] = df['returns'].rolling(window=10).std()
-        df['volatility_ratio'] = df['volatility_5'] / df['volatility_10']
-        
-        # トレンド強度指標
-        df['trend_strength'] = abs(df['sma_5'] - df['sma_20']) / df['sma_20']
-        
-        # 予測ターゲットの生成（改善版）
-        logger.info("予測ターゲットを生成します...")
-        
-        # 将来の価格変化率を計算（複数の時間枠）
-        for period in [5, 10, 15]:
-            df[f'future_return_{period}'] = df['close'].shift(-period) / df['close'] - 1
-        
-        # 主要な予測ターゲット
-        df['target'] = df['future_return_5'].apply(lambda x: 1 if x > 0.001 else (0 if x < -0.001 else 0.5))
-        
-        # 特徴量のスケーリング（改善版）
-        logger.info("特徴量のスケーリングを実行します...")
-        
-        # スケーリング対象の特徴量を選択
-        feature_columns = [
-            'open', 'high', 'low', 'close', 'volume',
-            'rsi', 'bollinger_high', 'bollinger_low',
-            'macd', 'macd_signal', 'atr',
-            'returns', 'momentum_1', 'momentum_5', 'momentum_10',
-            'volatility_5', 'volatility_10', 'trend_strength',
-            'price_range_ratio', 'body_ratio', 'relative_volume'
-        ]
-        
-        # RobustScalerを使用してスケーリング
-        from sklearn.preprocessing import RobustScaler
-        scaler = RobustScaler()
-        df[feature_columns] = scaler.fit_transform(df[feature_columns])
-        
-        # 最終的なデータクリーニング
-        logger.info("最終的なデータクリーニングを実行します...")
-        
-        # 無限大や非数値を含む行を除外
+        # 無限大の値をNaNに置換
         df = df.replace([np.inf, -np.inf], np.nan)
+        
+        # NaNを含む行を削除
         df = df.dropna()
         
-        # 特徴量の相関分析
-        correlation_matrix = df[feature_columns].corr()
-        high_correlation_pairs = []
-        for i in range(len(feature_columns)):
-            for j in range(i+1, len(feature_columns)):
-                if abs(correlation_matrix.iloc[i,j]) > 0.95:
-                    high_correlation_pairs.append((feature_columns[i], feature_columns[j]))
+        logger.info("基本的なデータクリーニングを実行します...")
         
-        if high_correlation_pairs:
-            logger.info("高相関の特徴量ペア:")
-            for pair in high_correlation_pairs:
-                logger.info(f"{pair[0]} - {pair[1]}: {correlation_matrix.loc[pair[0], pair[1]]:.3f}")
+        # 異常値の除去（99パーセンタイルを超える値をクリップ）
+        for col in df.select_dtypes(include=[np.number]).columns:
+            if col != 'target':  # ターゲット変数は除外
+                q1 = df[col].quantile(0.01)
+                q99 = df[col].quantile(0.99)
+                df[col] = df[col].clip(q1, q99)
         
-        # 前処理済みデータの保存
-        output_file = f"data/preprocessed_data_{datetime.now().strftime('%Y%m%d')}.csv"
-        df.to_csv(output_file, index=False)
-        logger.info(f"前処理済みデータを {output_file} に保存しました")
+        logger.info("特徴量エンジニアリングを実行します...")
+        df = add_features(df)
         
-        # データの品質レポート
-        logger.info("\nデータの品質レポート:")
-        logger.info(f"総行数: {len(df)}")
-        logger.info(f"特徴量数: {len(feature_columns)}")
-        logger.info("\n各クラスの分布:")
-        logger.info(df['target'].value_counts(normalize=True))
+        logger.info("予測ターゲットを生成します...")
+        df['target'] = np.where(df['close'].shift(-8) > df['close'] * 1.005, 1,  # 上昇
+                      np.where(df['close'].shift(-8) < df['close'] * 0.995, -1,  # 下落
+                      0))  # 中立
         
-        # 基本統計量の出力
-        logger.info("\n特徴量の基本統計量:")
-        logger.info(df[feature_columns].describe().to_string())
+        # 使用する特徴量の更新
+        feature_columns = [
+            'price_range', 'body_ratio',
+            'sma_20', 'sma_50', 'sma_100',
+            'ema_20', 'ema_50', 'ema_100',
+            'slope_20', 'slope_50', 'slope_100',
+            'volume_sma_15', 'volume_ratio',
+            'momentum_15', 'momentum_30',
+            'roc_15', 'roc_30',
+            'atr_20'
+        ]
         
-        return True
+        logger.info("特徴量のスケーリングを実行します...")
+        scaler = StandardScaler()
+        df[feature_columns] = scaler.fit_transform(df[feature_columns])
+        
+        return df, feature_columns
         
     except Exception as e:
-        logger.error(f"前処理中にエラーが発生しました: {e}")
+        logger.error(f"前処理中にエラーが発生しました: {str(e)}")
         logger.error(traceback.format_exc())
-        return False
+        raise
 
 if __name__ == "__main__":
-    preprocess_data() 
+    try:
+        # データの読み込み
+        input_file = "data/historical_data_20250218.csv"
+        logger = setup_logging()
+        logger.info(f"データファイル {input_file} を読み込みます...")
+        df = pd.read_csv(input_file)
+        
+        # 前処理の実行
+        processed_df, feature_columns = preprocess_data(df)
+        
+        # 処理済みデータの保存
+        output_file = f"data/preprocessed_data_{datetime.now().strftime('%Y%m%d')}.csv"
+        processed_df.to_csv(output_file, index=False)
+        
+        # 処理結果の表示
+        logger.info(f"\nデータ処理完了:")
+        logger.info(f"入力データ数: {len(df)}")
+        logger.info(f"出力データ数: {len(processed_df)}")
+        logger.info(f"特徴量数: {len(feature_columns)}")
+        logger.info("\nクラス分布:")
+        logger.info(processed_df['target'].value_counts(normalize=True))
+        
+    except Exception as e:
+        logger = setup_logging()
+        logger.error(f"処理中にエラーが発生しました: {str(e)}")
+        logger.error(traceback.format_exc()) 

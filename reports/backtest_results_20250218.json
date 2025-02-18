@@ -1,0 +1,382 @@
+{
+    "statistics": {
+        "total_trades": 36,
+        "profitable_trades": 19,
+        "win_rate": 0.5277777777777778,
+        "total_profit": 8.212465006659675,
+        "total_fees": 0.15191172638994535,
+        "max_drawdown": -0.01935033947787744,
+        "sharpe_ratio": 2.8112330641016428,
+        "final_balance": 108.06877396596205
+    },
+    "parameters": {
+        "initial_balance": 100.0,
+        "position_size": 2.0045369891230963e-182,
+        "stop_loss": 0.02,
+        "take_profit": 0.04,
+        "maker_fee": 0.001,
+        "taker_fee": 0.001
+    },
+    "trades": [
+        {
+            "timestamp": "2025-01-20 12:15:50",
+            "entry_price": 97725.03,
+            "exit_price": 95071.45,
+            "position_size": 0.0,
+            "profit": -1.8685339477877392,
+            "fees": 0.0646295956478601,
+            "balance": 98.06496605221226,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-20 13:45:24",
+            "entry_price": 95098.64,
+            "exit_price": 108093.75,
+            "position_size": 0.0,
+            "profit": 8.828340718253799,
+            "fees": 0.0740503803208711,
+            "balance": 106.82809356804134,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-20 14:59:41",
+            "entry_price": 97366.02,
+            "exit_price": 107714.85,
+            "position_size": 0.0,
+            "profit": 1.2545923735576938,
+            "fees": 0.01319565568295664,
+            "balance": 108.07074613413785,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-20 19:30:34",
+            "entry_price": 99386.85,
+            "exit_price": 92935.18,
+            "position_size": 0.0,
+            "profit": -0.0018484456664034296,
+            "fees": 2.624843302272699e-05,
+            "balance": 108.06886958974245,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-20 23:15:34",
+            "entry_price": 92935.35,
+            "exit_price": 92119.22,
+            "position_size": 0.0,
+            "profit": -9.409419634704742e-05,
+            "fees": 9.543508304930704e-06,
+            "balance": 108.06876585784941,
+            "reason": "下落予測"
+        },
+        {
+            "timestamp": "2025-01-21 01:59:24",
+            "entry_price": 92200.0,
+            "exit_price": 94000.0,
+            "position_size": 0.0,
+            "profit": 5.1131424939618916e-06,
+            "fees": 2.8173235312568384e-07,
+            "balance": 108.06877069437782,
+            "reason": "下落予測"
+        },
+        {
+            "timestamp": "2025-01-21 04:14:51",
+            "entry_price": 92299.49,
+            "exit_price": 78007.56,
+            "position_size": 0.0,
+            "profit": -1.7361120417724967e-06,
+            "fees": 9.424526982098485e-09,
+            "balance": 108.0687689471034,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-21 05:29:07",
+            "entry_price": 77894.73,
+            "exit_price": 145789.47,
+            "position_size": 0.0,
+            "profit": 4.7523972786264004e-06,
+            "fees": 1.0226719012770296e-08,
+            "balance": 108.06877369403111,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-21 06:30:17",
+            "entry_price": 77894.73,
+            "exit_price": 99224.19,
+            "position_size": 0.0,
+            "profit": 2.502967459927873e-07,
+            "fees": 1.1698170525770554e-09,
+            "balance": 108.06877394340857,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-21 09:29:25",
+            "entry_price": 77894.74,
+            "exit_price": 86026.22,
+            "position_size": 0.0,
+            "profit": 2.277419500859218e-08,
+            "fees": 2.435136617156792e-10,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-22 05:59:19",
+            "entry_price": 105462.48,
+            "exit_price": 137079.15,
+            "position_size": 0.0,
+            "profit": 3.4386209898005833e-18,
+            "fees": 1.4973614005978182e-20,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-22 06:29:54",
+            "entry_price": 137205.41,
+            "exit_price": 94606.85,
+            "position_size": 0.0,
+            "profit": -1.4465142135083919e-19,
+            "fees": 3.205434576944634e-22,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-22 07:00:29",
+            "entry_price": 82551.74,
+            "exit_price": 105513.03,
+            "position_size": 0.0,
+            "profit": 6.306688902379252e-20,
+            "fees": 2.911464599216421e-22,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-22 08:14:45",
+            "entry_price": 127170.13,
+            "exit_price": 127154.2,
+            "position_size": 0.0,
+            "profit": -1.2558399519747937e-22,
+            "fees": 1.116023463257129e-22,
+            "balance": 108.06877396596205,
+            "reason": "下落予測"
+        },
+        {
+            "timestamp": "2025-01-22 11:29:11",
+            "entry_price": 127872.7,
+            "exit_price": 127822.03,
+            "position_size": 0.0,
+            "profit": -1.0566746397386096e-24,
+            "fees": 7.567077224731803e-25,
+            "balance": 108.06877396596205,
+            "reason": "下落予測"
+        },
+        {
+            "timestamp": "2025-01-22 13:14:02",
+            "entry_price": 99118.29,
+            "exit_price": 127992.69,
+            "position_size": 0.0,
+            "profit": 4.463361295177036e-23,
+            "fees": 1.9873009258199114e-25,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-22 13:44:37",
+            "entry_price": 116649.68,
+            "exit_price": 105054.14,
+            "position_size": 0.0,
+            "profit": -7.564020768300848e-24,
+            "fees": 6.79137902954376e-26,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-22 14:30:30",
+            "entry_price": 109797.77,
+            "exit_price": 116649.68,
+            "position_size": 0.0,
+            "profit": 2.2666543367150058e-24,
+            "fees": 3.925676076146353e-26,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-22 16:45:56",
+            "entry_price": 115595.54,
+            "exit_price": 112960.19,
+            "position_size": 0.0,
+            "profit": -3.013305881404932e-25,
+            "fees": 1.2385196042649717e-26,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-23 00:59:38",
+            "entry_price": 110324.84,
+            "exit_price": 130041.22,
+            "position_size": 0.0,
+            "profit": 1.0350078065767155e-28,
+            "fees": 6.871814042867284e-31,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-23 04:59:56",
+            "entry_price": 122605.8,
+            "exit_price": 114195.5,
+            "position_size": 0.0,
+            "profit": -1.6102721603786056e-32,
+            "fees": 2.157146243909864e-34,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-23 05:30:31",
+            "entry_price": 114149.81,
+            "exit_price": 114449.47,
+            "position_size": 0.0,
+            "profit": 1.841315359047787e-34,
+            "fees": 1.137827136210127e-34,
+            "balance": 108.06877396596205,
+            "reason": "下落予測"
+        },
+        {
+            "timestamp": "2025-01-23 06:14:13",
+            "entry_price": 114409.19,
+            "exit_price": 74328.91,
+            "position_size": 0.0,
+            "profit": -1.366174905569396e-32,
+            "fees": 2.5288825954680717e-35,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-23 07:30:40",
+            "entry_price": 74696.6,
+            "exit_price": 78327.31,
+            "position_size": 0.0,
+            "profit": 9.070825351350159e-34,
+            "fees": 2.0000473238739552e-35,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-23 14:14:49",
+            "entry_price": 59144.1,
+            "exit_price": 102912.92,
+            "position_size": 0.0,
+            "profit": 6.477450061772185e-37,
+            "fees": 1.5266218992997406e-39,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-23 23:14:23",
+            "entry_price": 138313.97,
+            "exit_price": 177344.62,
+            "position_size": 0.0,
+            "profit": 5.051776150300006e-40,
+            "fees": 2.3058664196976938e-42,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-25 15:45:47",
+            "entry_price": 107199.54,
+            "exit_price": 115346.84,
+            "position_size": 0.0,
+            "profit": 6.412712149559911e-33,
+            "fees": 9.209292777814729e-35,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-25 19:46:04",
+            "entry_price": 97935.85,
+            "exit_price": 94653.52,
+            "position_size": 0.0,
+            "profit": -6.865424968010888e-36,
+            "fees": 1.9243109587876157e-37,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-26 08:30:40",
+            "entry_price": 115679.79,
+            "exit_price": 120647.47,
+            "position_size": 0.0,
+            "profit": 4.985556732874289e-38,
+            "fees": 1.2409547545635072e-39,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-26 15:45:23",
+            "entry_price": 115431.94,
+            "exit_price": 96690.0,
+            "position_size": 0.0,
+            "profit": -9.59124872993542e-38,
+            "fees": 4.9227456545271916e-40,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-26 18:29:13",
+            "entry_price": 101409.04,
+            "exit_price": 105186.79,
+            "position_size": 0.0,
+            "profit": 3.736880777263249e-38,
+            "fees": 1.0702892533006262e-39,
+            "balance": 108.06877396596205,
+            "reason": "下落予測"
+        },
+        {
+            "timestamp": "2025-01-27 01:15:33",
+            "entry_price": 103306.73,
+            "exit_price": 98771.5,
+            "position_size": 0.0,
+            "profit": -9.677125076587437e-40,
+            "fees": 2.0626323912544188e-41,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        },
+        {
+            "timestamp": "2025-01-27 05:44:15",
+            "entry_price": 103505.34,
+            "exit_price": 110385.55,
+            "position_size": 0.0,
+            "profit": 6.806519833985555e-42,
+            "fees": 1.1098388754532685e-43,
+            "balance": 108.06877396596205,
+            "reason": "利確"
+        },
+        {
+            "timestamp": "2025-01-27 06:30:07",
+            "entry_price": 110146.0,
+            "exit_price": 109932.85,
+            "position_size": 0.0,
+            "profit": -1.4957248832223924e-43,
+            "fees": 5.089384943477256e-44,
+            "balance": 108.06877396596205,
+            "reason": "下落予測"
+        },
+        {
+            "timestamp": "2025-01-27 09:13:58",
+            "entry_price": 109932.85,
+            "exit_price": 109932.85,
+            "position_size": 0.0,
+            "profit": -7.058022261725506e-46,
+            "fees": 7.058022261725833e-46,
+            "balance": 108.06877396596205,
+            "reason": "下落予測"
+        },
+        {
+            "timestamp": "2025-01-27 10:30:25",
+            "entry_price": 109932.85,
+            "exit_price": 100924.07,
+            "position_size": 0.0,
+            "profit": -2.8658660373727477e-44,
+            "fees": 3.175019323832215e-46,
+            "balance": 108.06877396596205,
+            "reason": "ストップロス"
+        }
+    ]
+}
